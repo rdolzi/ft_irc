@@ -1,0 +1,12 @@
+# Compiled Object files
+*.o
+
+# Ignore  folder and subfolders
+/docs/
+/obj/
+readme.md
+# Visual Studio specific files
+.vscode/
+*.code-workspace
+.vs/
+.vscode/
