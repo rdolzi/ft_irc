@@ -1,6 +1,9 @@
 # Compiled Object files
 *.o
 
+# Log files
+*.log
+
 # Ignore  folder and subfolders
 /docs/
 /obj/

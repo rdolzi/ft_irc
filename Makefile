@@ -6,7 +6,9 @@ INCLUDE_DIR = ./include
 # Source files
 SRCS = $(wildcard $(SRC_DIR)/*.cpp) \
        $(wildcard $(SRC_DIR)/client/*.cpp) \
-       $(wildcard $(SRC_DIR)/server/*.cpp)
+       $(wildcard $(SRC_DIR)/server/*.cpp) \
+	   $(wildcard $(SRC_DIR)/server/command/*.cpp) \
+	   $(wildcard $(SRC_DIR)/logger/*.cpp) 
 
 # Object files
 OBJS = $(patsubst $(SRC_DIR)/%.cpp,$(OBJ_DIR)/%.o,$(SRCS))

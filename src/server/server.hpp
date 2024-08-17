@@ -2,28 +2,38 @@
 #define SERVER_HPP
 
 #include "../client/client.hpp"
+#include "../logger/logger.hpp"
+#include "./command/command.hpp"
+#include "./command/commandParser.hpp"
+#include "./command/commandExecutor.hpp"
 #include <string>
 #include <map>
 #include <vector>
 #include <iostream>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <cstring>
+
+class CommandExecutor;
 
 class Server {
 private:
     int _serverSocket;
     int _port;
     std::string _password;
+    std::string _serverName;
     std::map<int, Client*> _clients;
     std::vector<pollfd> _pollFds;
+    CommandExecutor* _cmdExecutor;
 
     void _acceptNewConnection();
     void _handleClientMessage(int clientFd);
     void _removeClient(int clientFd);
+
 
 public:
     Server(int port, const std::string& password);
@@ -36,10 +46,11 @@ public:
     // Getters
     int getPort() const;
     std::string getPassword() const;
-
+    std::string getServerName() const;
     
     bool isNicknameTaken(const std::string& nickname) const;
     Client* getClientByNickname(const std::string& nickname);
+    Client* getClientByFd(int fd);
 };
 
 #endif // SERVER_HPP

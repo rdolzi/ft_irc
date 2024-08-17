@@ -1,14 +1,18 @@
 
 #include "server.hpp"
 
-Server::Server(int port, const std::string& password) : _port(port), _password(password) {
+
+//enhanced version: added Logger
+Server::Server(int port, const std::string& password) : _port(port), _password(password), _serverName("ft_irc.com") {
     _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (_serverSocket == -1) {
+        Logger::error("Failed to create socket: " + std::string(strerror(errno)));
         throw std::runtime_error("Failed to create socket");
     }
 
     int opt = 1;
     if (setsockopt(_serverSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == -1) {
+        Logger::error("Failed to set socket options: " + std::string(strerror(errno)));
         throw std::runtime_error("Failed to set socket options");
     }
 
@@ -18,33 +22,55 @@ Server::Server(int port, const std::string& password) : _port(port), _password(p
     address.sin_port = htons(_port);
 
     if (bind(_serverSocket, (struct sockaddr*)&address, sizeof(address)) == -1) {
+        Logger::error("Failed to bind to port " + std::to_string(_port) + ": " + std::string(strerror(errno)));
         throw std::runtime_error("Failed to bind to port");
     }
 
     if (listen(_serverSocket, SOMAXCONN) == -1) {
+        Logger::error("Failed to listen on socket: " + std::string(strerror(errno)));
         throw std::runtime_error("Failed to listen on socket");
     }
 
     // Set server socket to non-blocking mode
     int flags = fcntl(_serverSocket, F_GETFL, 0);
-    fcntl(_serverSocket, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1) {
+        Logger::error("Failed to get socket flags: " + std::string(strerror(errno)));
+        throw std::runtime_error("Failed to get socket flags");
+    }
+    if (fcntl(_serverSocket, F_SETFL, flags | O_NONBLOCK) == -1) {
+        Logger::error("Failed to set socket to non-blocking mode: " + std::string(strerror(errno)));
+        throw std::runtime_error("Failed to set socket to non-blocking mode");
+    }
 
     // Add server socket to poll set
     pollfd serverPollFd = {_serverSocket, POLLIN, 0};
     _pollFds.push_back(serverPollFd);
+
+    _cmdExecutor = new CommandExecutor(*this);
+
+    Logger::info("Server initialized on port " + std::to_string(_port));
 }
 
+
+
+//enhanced version: added Logger
 Server::~Server() {
     for (std::map<int, Client*>::iterator it = _clients.begin(); it != _clients.end(); ++it) {
         delete it->second;
     }
+    delete _cmdExecutor;
     close(_serverSocket);
+    Logger::info("Server shut down");
 }
 
+
+//enhanced version: added Logger
 void Server::run() {
+    Logger::info("Server started running");
     while (true) {
         int ret = poll(_pollFds.data(), _pollFds.size(), -1);
         if (ret == -1) {
+            Logger::error("Poll failed: " + std::string(strerror(errno)));
             throw std::runtime_error("Poll failed");
         }
 
@@ -60,49 +86,98 @@ void Server::run() {
     }
 }
 
+
+
+//enhanced version: added Logger
 void Server::_acceptNewConnection() {
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
     int clientSocket = accept(_serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
     if (clientSocket == -1) {
-        std::cerr << "Failed to accept new connection" << std::endl;
+        Logger::error("Failed to accept new connection: " + std::string(strerror(errno)));
         return;
     }
 
     // Set client socket to non-blocking mode
     int flags = fcntl(clientSocket, F_GETFL, 0);
-    fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK);
+    if (flags == -1) {
+        Logger::error("Failed to get client socket flags: " + std::string(strerror(errno)));
+        close(clientSocket);
+        return;
+    }
+    if (fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK) == -1) {
+        Logger::error("Failed to set client socket to non-blocking mode: " + std::string(strerror(errno)));
+        close(clientSocket);
+        return;
+    }
 
     // Add new client to our data structures
     Client* newClient = new Client(clientSocket);
     _clients[clientSocket] = newClient;
 
+    Logger::debug("New client created with fd: " + std::to_string(clientSocket) + 
+              ", password set: " + (newClient->isPasswordSet() ? "true" : "false"));
+              
     pollfd clientPollFd = {clientSocket, POLLIN, 0};
     _pollFds.push_back(clientPollFd);
 
-    std::cout << "New client connected" << std::endl;
+    Logger::info("New client connected from " + std::string(inet_ntoa(clientAddr.sin_addr)));
 }
 
+
+
+//enhanced version: added Logger
+// void Server::_handleClientMessage(int clientFd) {
+//     char buffer[1024];
+//     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
+//     if (bytesRead <= 0) {
+//         if (bytesRead == 0) {
+//             Logger::info("Client disconnected: " + std::to_string(clientFd));
+//         } else {
+//             Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+//         }
+//         _removeClient(clientFd);
+//         return;
+//     }
+
+//     buffer[bytesRead] = '\0';
+//     Logger::debug("Received message from client " + std::to_string(clientFd) + ": " + std::string(buffer));
+
+//     // TODO: Implement command parsing and execution here
+// }
+
+
+//executeCommand & sendToClient implemented
 void Server::_handleClientMessage(int clientFd) {
     char buffer[1024];
     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
     if (bytesRead <= 0) {
         if (bytesRead == 0) {
-            std::cout << "Client disconnected" << std::endl;
+            Logger::info("Client disconnected: " + std::to_string(clientFd));
         } else {
-            std::cerr << "Error reading from client" << std::endl;
+            Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
         }
         _removeClient(clientFd);
         return;
     }
 
     buffer[bytesRead] = '\0';
-    std::cout << "Received message from client: " << buffer << std::endl;
+    std::string message(buffer);
+    Logger::debug("Received message from client " + std::to_string(clientFd) + ": " + message);
 
-    // TODO: Implement command parsing and execution here
+    Command cmd = CommandParser::parse(message);
+    if (cmd.isValid()) {
+        Logger::info("Parsed command: " + cmd.toString());
+        _cmdExecutor->executeCommand(clientFd, cmd);
+    } else {
+        Logger::warning("Invalid command received from client " + std::to_string(clientFd));
+        sendToClient(clientFd, ": 421 * " + cmd.getCommand() + " :Unknown command\r\n");
+    }
 }
 
+//enhanced version: added Logger
 void Server::_removeClient(int clientFd) {
+    Logger::info("Removing client: " + std::to_string(clientFd));
     delete _clients[clientFd];
     _clients.erase(clientFd);
     close(clientFd);
@@ -124,8 +199,21 @@ void Server::broadcast(const std::string& message, int senderFd) {
     }
 }
 
+
+
+// void Server::sendToClient(int clientFd, const std::string& message) {
+//     send(clientFd, message.c_str(), message.length(), 0);
+// }
+
 void Server::sendToClient(int clientFd, const std::string& message) {
-    send(clientFd, message.c_str(), message.length(), 0);
+    ssize_t bytesSent = send(clientFd, message.c_str(), message.length(), 0);
+    if (bytesSent == -1) {
+        Logger::error("Failed to send message to client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+    } else if (static_cast<size_t>(bytesSent) < message.length()) {
+        Logger::warning("Incomplete message sent to client " + std::to_string(clientFd));
+    } else {
+        Logger::debug("Successfully sent " + std::to_string(bytesSent) + " bytes to client " + std::to_string(clientFd));
+    }
 }
 
 int Server::getPort() const {
@@ -134,6 +222,10 @@ int Server::getPort() const {
 
 std::string Server::getPassword() const {
     return _password;
+}
+
+std::string Server::getServerName() const {
+    return _serverName;
 }
 
 bool Server::isNicknameTaken(const std::string& nickname) const {
@@ -150,6 +242,14 @@ Client* Server::getClientByNickname(const std::string& nickname) {
         if (it->second->getNickname() == nickname) {
             return it->second;
         }
+    }
+    return NULL;
+}
+
+Client* Server::getClientByFd(int fd) {
+    std::map<int, Client*>::iterator it = _clients.find(fd);
+    if (it != _clients.end()) {
+        return it->second;
     }
     return NULL;
 }

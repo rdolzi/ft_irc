@@ -1,7 +1,7 @@
 #include "client.hpp"
 #include <algorithm>
 
-Client::Client(int fd) : _fd(fd), _isOperator(false) {}
+Client::Client(int fd) : _fd(fd), _isPasswordSet(false), _isUserSet(false) {}
 
 Client::~Client() {}
 
@@ -49,4 +49,36 @@ void Client::setOperator(bool isOperator) {
 
 bool Client::isInChannel(const std::string& channel) const {
     return std::find(_channels.begin(), _channels.end(), channel) != _channels.end();
+}
+
+bool Client::isPasswordSet() const {
+    return _isPasswordSet;
+}
+
+bool Client::isUserSet() const {
+    return _isUserSet;
+}
+
+void Client::setRealname(const std::string& realname) {
+    _realname = realname;
+}
+
+void Client::setHostname(const std::string& hostname) {
+    _hostname = hostname;
+}
+
+std::string Client::getRealname() const {
+    return _realname;
+}
+
+std::string Client::getHostname() const {
+    return _hostname;
+}
+
+void Client::setPassword(bool isSet) {
+    _isPasswordSet = isSet;
+}
+
+void Client::setUser(bool isSet) {
+    _isUserSet = isSet;
 }
