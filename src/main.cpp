@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
         }
     } catch (const std::exception& e) {
         std::cerr << "Invalid port number: " << e.what() << std::endl;
-        std::cerr << "<port>: A number between 1024 and 65535" << std::endl;
+        std::cerr << "<port>: A number between 0 and 65535" << std::endl;
         return 1;
     }
 
@@ -35,3 +35,20 @@ int main(int argc, char* argv[]) {
 
     return 0;
 }
+
+
+/*
+per far partire il server
+esempio:
+
+./ircserver 10 psw
+
+client:
+nc localhost 10
+
+
+PASS psw
+NICK test
+USER marco 0 * :Marco Rossi
+*/ 
+
