@@ -87,12 +87,14 @@ Our IRC server follows a modular architecture with the following key components:
 
 ## References
 
+References
 For a deeper understanding of the IRC protocol, refer to the following RFCs:
 
-- [RFC 1459](https://tools.ietf.org/html/rfc1459) - Internet Relay Chat Protocol
-- [RFC 2810](https://tools.ietf.org/html/rfc2810) - Internet Relay Chat: Architecture
-- [RFC 2811](https://tools.ietf.org/html/rfc2811) - Internet Relay Chat: Channel Management
-- [RFC 2812](https://tools.ietf.org/html/rfc2812) - Internet Relay Chat: Client Protocol
-- [RFC 2813](https://tools.ietf.org/html/rfc2813) - Internet Relay Chat: Server Protocol
+<a href="https://tools.ietf.org/html/rfc1459" target="_blank">RFC 1459</a> - Internet Relay Chat Protocol
+<a href="https://tools.ietf.org/html/rfc2810" target="_blank">RFC 2810</a> - Internet Relay Chat: Architecture
+<a href="https://tools.ietf.org/html/rfc2811" target="_blank">RFC 2811</a> - Internet Relay Chat: Channel Management
+<a href="https://tools.ietf.org/html/rfc2812" target="_blank">RFC 2812</a> - Internet Relay Chat: Client Protocol
+<a href="https://tools.ietf.org/html/rfc2813" target="_blank">RFC 2813</a> - Internet Relay Chat: Server Protocol
+<a href="https://tools.ietf.org/html/rfc7194" target="_blank">RFC 7194</a> - Default Port for Internet Relay Chat (IRC) via TLS/SSLl
 
 For user documentation and guides, please check the [docs](./docs) directory.
