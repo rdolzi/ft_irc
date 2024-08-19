@@ -8,8 +8,6 @@
 - [Project Structure](#project-structure)
 - [Architecture](#architecture)
 - [Authors](#authors)
-- [Project Status](#project-status)
-- [Roadmap](#roadmap)
 - [References](#references)
 
 ## Project Description
