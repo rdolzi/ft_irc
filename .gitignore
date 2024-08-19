@@ -5,9 +5,9 @@
 *.log
 
 # Ignore  folder and subfolders
-/docs/
+/docs/architecture/
+/docs/error-handling/
 /obj/
-readme.md
 # Visual Studio specific files
 .vscode/
 *.code-workspace

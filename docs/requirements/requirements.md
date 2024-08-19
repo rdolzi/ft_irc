@@ -1,0 +1,24 @@
+# Requirements
+
+- Create an IRC server in C++ 98.
+- Do not develop a client.
+- Do not handle server-to-server communication.
+- The program should be named "ircserv" and take two arguments: port number and connection password.
+- It must handle multiple clients simultaneously without hanging.
+- Forking is not allowed. All I/O operations must be non-blocking.
+- Only one poll() (or equivalent like select(), kqueue(), epoll()) can be used - for handling all operations.
+- Communication between client and server must use TCP/IP (v4 or v6).
+- The server must support basic IRC functionalities:
+    - Authentication
+    - Setting nickname and username
+    - Joining channels
+    - Sending and receiving private messages
+    - Forwarding messages in channels to all members
+- Implement operator and regular user roles.
+- Implement specific channel operator commands: KICK, INVITE, TOPIC, and MODE.
+- The code must compile with flags -Wall -Wextra -Werror and comply with C++98 standard.
+- External libraries and Boost libraries are forbidden.
+- A Makefile must be provided with rules for NAME, all, clean, fclean, and re.
+- The program should not crash under any circumstances.
+- The server should be tested with a chosen reference IRC client, which must connect without errors.
+- File transfer and a bot (bonus part).
