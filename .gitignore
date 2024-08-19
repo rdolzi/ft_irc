@@ -6,7 +6,6 @@
 
 # Ignore  folder and subfolders
 /docs/architecture/
-/docs/error-handling/
 /obj/
 # Visual Studio specific files
 .vscode/
