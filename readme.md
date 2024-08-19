@@ -87,14 +87,18 @@ Our IRC server follows a modular architecture with the following key components:
 
 ## References
 
-References
 For a deeper understanding of the IRC protocol, refer to the following RFCs:
 
-<a href="https://tools.ietf.org/html/rfc1459" target="_blank">RFC 1459</a> - Internet Relay Chat Protocol
-<a href="https://tools.ietf.org/html/rfc2810" target="_blank">RFC 2810</a> - Internet Relay Chat: Architecture
-<a href="https://tools.ietf.org/html/rfc2811" target="_blank">RFC 2811</a> - Internet Relay Chat: Channel Management
-<a href="https://tools.ietf.org/html/rfc2812" target="_blank">RFC 2812</a> - Internet Relay Chat: Client Protocol
-<a href="https://tools.ietf.org/html/rfc2813" target="_blank">RFC 2813</a> - Internet Relay Chat: Server Protocol
-<a href="https://tools.ietf.org/html/rfc7194" target="_blank">RFC 7194</a> - Default Port for Internet Relay Chat (IRC) via TLS/SSLl
+- [RFC 1459 - Internet Relay Chat Protocol](https://tools.ietf.org/html/rfc1459)
+
+- [RFC 2810 - Internet Relay Chat: Architecture](https://tools.ietf.org/html/rfc2810)
+
+- [RFC 2811 - Internet Relay Chat: Channel Management](https://tools.ietf.org/html/rfc2811)
+
+- [RFC 2812 - Internet Relay Chat: Client Protocol](https://tools.ietf.org/html/rfc2812)
+
+- [RFC 2813 - Internet Relay Chat: Server Protocol](https://tools.ietf.org/html/rfc2813)
+
+- [RFC 7194 - Default Port for Internet Relay Chat (IRC) via TLS/SSL](https://tools.ietf.org/html/rfc7194)
 
 For user documentation and guides, please check the [docs](./docs) directory.
