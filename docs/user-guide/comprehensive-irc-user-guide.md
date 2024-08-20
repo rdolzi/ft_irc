@@ -30,6 +30,69 @@ This section outlines all actions a client can perform on our IRC server, both a
 
 ## Messages
 
+### IRC Server and Client Identifiers
+
+#### 1. RFC 2812 Section 2.3.1 Excerpt
+
+The following is an excerpt from RFC 2812, Section 2.3.1, which defines the message format in Augmented BNF:
+
+```
+prefix     =  servername / ( nickname [ [ "!" user ] "@" host ] )
+```
+
+#### 2. Server Identifier
+
+- Format: `servername`
+- Example: `:irc.example.com`
+
+The server identifier is simply the name of the server. It's used as the prefix in messages originating from the server, such as numeric replies or server-to-client messages like PING.
+
+Usage examples:
+1. Numeric reply: `:irc.example.com 001 nickname :Welcome to the IRC Network`
+2. PING message: `:irc.example.com PING :irc.example.com`
+
+#### 3. Client Identifier
+
+- Full Format: `nickname!username@hostname`
+- Partial Formats: 
+  - `nickname`
+  - `nickname@hostname`
+  - `nickname!username`
+
+The client identifier can appear in full or partial forms, depending on the context and available information.
+
+Usage examples:
+1. Full identifier: `:john!jdoe@example.com PRIVMSG #channel :Hello, world!`
+2. Partial (nickname only): `:john QUIT :Leaving`
+
+#### 4. Explanation
+
+- The `prefix` in a message can be either a `servername` or a client identifier.
+- For server-originated messages, only the `servername` is used.
+- For client-originated messages, the full or partial client identifier is used.
+- The full client identifier (`nickname!username@hostname`) provides the most complete information about the message source.
+- Partial client identifiers may be used when full information is not available or necessary.
+
+#### 5. When to Use Each Identifier
+
+##### Server Identifier:
+- Used for all messages originating from the server itself
+- Examples: Numeric replies, PING messages, server notices
+
+##### Client Identifier:
+- Used for messages originating from or relating to specific clients
+- Full identifier (`nickname!username@hostname`) should be used whenever possible, especially for:
+  - PRIVMSG and NOTICE commands
+  - JOIN, PART, and QUIT notifications
+  - NICK changes
+  - Any other user actions that affect channels or other users
+- Partial identifiers might be used in specific contexts or when full information is not available
+
+#### 6. Important Notes
+
+The server should always use the most complete form of the client identifier available when relaying messages from one client to another.
+
+
 ### IRC Commands vs. Numeric Replies
 
 In IRC, there are two types of messages that can be sent:
@@ -953,6 +1016,15 @@ Note: These commands are powerful and can significantly impact server operations
 
 
 
+
+
+
+
+
+
+
+
+----
 
 
 

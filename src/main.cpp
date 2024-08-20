@@ -52,3 +52,5 @@ NICK test
 USER marco 0 * :Marco Rossi
 */ 
 
+
+//kvIRC
