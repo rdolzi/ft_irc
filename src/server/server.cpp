@@ -98,6 +98,12 @@ void Server::_acceptNewConnection() {
         return;
     }
 
+    std::string clientIP = _getIPAddress(clientAddr);
+    if (clientIP == "Unknown") {
+        close(clientSocket);
+        return;
+    }
+
     // Set client socket to non-blocking mode
     int flags = fcntl(clientSocket, F_GETFL, 0);
     if (flags == -1) {
@@ -113,6 +119,7 @@ void Server::_acceptNewConnection() {
 
     // Add new client to our data structures
     Client* newClient = new Client(clientSocket);
+    newClient->setHostname(clientIP);
     _clients[clientSocket] = newClient;
 
     Logger::debug("New client created with fd: " + std::to_string(clientSocket) + 
@@ -121,7 +128,7 @@ void Server::_acceptNewConnection() {
     pollfd clientPollFd = {clientSocket, POLLIN, 0};
     _pollFds.push_back(clientPollFd);
 
-    Logger::info("New client connected from " + std::string(inet_ntoa(clientAddr.sin_addr)));
+    Logger::info("New client connected from " + clientIP);
 }
 
 
@@ -252,4 +259,13 @@ Client* Server::getClientByFd(int fd) {
         return it->second;
     }
     return NULL;
+}
+
+std::string Server::_getIPAddress(const struct sockaddr_in& clientAddr) const {
+    char ipStr[INET_ADDRSTRLEN];
+    if (inet_ntop(AF_INET, &(clientAddr.sin_addr), ipStr, INET_ADDRSTRLEN) == NULL) {
+        Logger::error("Failed to convert IP address to string: " + std::string(strerror(errno)));
+        return "Unknown";
+    }
+    return std::string(ipStr);
 }

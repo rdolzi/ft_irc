@@ -82,3 +82,7 @@ void Client::setPassword(bool isSet) {
 void Client::setUser(bool isSet) {
     _isUserSet = isSet;
 }
+
+std::string Client::getFullClientIdentifier() const {
+    return _nickname + "!" + _username + "@" + _hostname;
+}

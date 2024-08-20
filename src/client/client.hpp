@@ -44,6 +44,7 @@ public:
 
     
     bool isInChannel(const std::string& channel) const;
+    std::string getFullClientIdentifier() const;
 };
 
 #endif // CLIENT_HPP

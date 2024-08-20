@@ -33,6 +33,7 @@ private:
     void _acceptNewConnection();
     void _handleClientMessage(int clientFd);
     void _removeClient(int clientFd);
+    std::string _getIPAddress(const struct sockaddr_in& clientAddr) const;
 
 
 public:
