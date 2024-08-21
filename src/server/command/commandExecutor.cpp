@@ -5,6 +5,7 @@ CommandExecutor::CommandExecutor(Server& server) : _server(server) {}
 
 CommandExecutor::~CommandExecutor() {}
 
+
 void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
     std::string command = cmd.getCommand();
     Client* client = _server.getClientByFd(clientFd);
@@ -35,6 +36,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
     }
 }
 
+
 void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     Client* client = _server.getClientByFd(clientFd);
     
@@ -42,25 +44,25 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
                   std::string(client->isPasswordSet() ? "true" : "false"));
 
     if (client->isPasswordSet()) {
-        sendReply(clientFd, "462 * :You may not reregister");
-        Logger::debug("Sent 'already registered' reply");
+        sendReply(clientFd, "[462] * :Unauthorized command (already registered)");
+        Logger::debug("Sent [462] 'already registered' reply");
         return;
     }
 
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "461 PASS :Not enough parameters");
-        Logger::debug("Sent 'not enough parameters' reply");
+        sendReply(clientFd, "[461] PASS :Not enough parameters");
+        Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
 
     std::string password = cmd.getParameters()[0];
     if (password == _server.getPassword()) {
         client->setPassword(true);
-        sendReply(clientFd, "001 * :Password accepted");
-        Logger::debug("Sent 'password accepted' reply");
+        //sendReply(clientFd, ":Password accepted");
+        Logger::debug("Client "+ std::to_string(clientFd)  + " set password correctly.");
     } else {
-        sendReply(clientFd, "464 * :Password incorrect");
-        Logger::debug("Sent 'password incorrect' reply");
+        sendReply(clientFd, "[464] * :Password incorrect");
+        Logger::debug("Sent [464] 'password incorrect' reply");
     }
 }
 
@@ -70,39 +72,35 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
     Logger::debug("Executing NICK command. Current nickname: " + client->getNickname());
 
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "431 :No nickname given");
-        Logger::debug("Sent 'no nickname given' reply");
+        sendReply(clientFd, "[431] * :No nickname given");
+        Logger::debug("Sent [431] 'no nickname given' reply");
         return;
     }
 
     std::string newNick = cmd.getParameters()[0];
 
     if (!isValidNickname(newNick)) {
-        sendReply(clientFd, "432 * " + newNick + " :Erroneous nickname");
-        Logger::debug("Sent 'erroneous nickname' reply");
+        sendReply(clientFd, "[432] " + newNick + " :Erroneous nickname");
+        Logger::debug("Sent [432] 'erroneous nickname' reply");
         return;
     }
 
     if (_server.isNicknameTaken(newNick)) {
-        sendReply(clientFd, "433 * " + newNick + " :Nickname is already in use");
+        sendReply(clientFd, "[433] " + newNick + " :Nickname is already in use");
         Logger::debug("Sent 'nickname in use' reply");
         return;
     }
 
-    std::string oldNick = client->getNickname();
+    std::string oldNick = client->getNickname();std::string oldClientIdentifier = client->getFullClientIdentifier();
     client->setNickname(newNick);
 
-    if (oldNick.empty()) {
+    if (oldNick.empty() && isRegistered(client)) {
         Logger::debug("Nickname set for the first time: " + newNick);
+        sendReply(clientFd, "001 " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
+        Logger::debug("[001] Registration complete, sent welcome message");
     } else {
-        _server.broadcast(":" + oldNick + " NICK " + newNick + "\r\n", clientFd);
+        _server.broadcast(":" + oldClientIdentifier + " NICK " + newNick + "\r\n", clientFd);
         Logger::debug("Nickname changed from " + oldNick + " to " + newNick);
-    }
-
-   
-    if (isRegistered(client)) {
-        sendReply(clientFd, "001 " + newNick + " :Welcome to the Internet Relay Network " + newNick);
-        Logger::debug("Registration complete, sent welcome message");
     }
 }
 
@@ -112,14 +110,14 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     Logger::debug("Executing USER command. Is user set: " + std::string(client->isUserSet() ? "true" : "false"));
 
     if (client->isUserSet()) {
-        sendReply(clientFd, "462 :You may not reregister");
-        Logger::debug("Sent 'already registered' reply");
+        sendReply(clientFd, "[462] :Unauthorized command (already registered)");
+        Logger::debug("Sent [462] 'already registered' reply");
         return;
     }
 
     if (cmd.getParameters().size() < 4) {
-        sendReply(clientFd, "461 USER :Not enough parameters");
-        Logger::debug("Sent 'not enough parameters' reply");
+        sendReply(clientFd, "[461] USER :Not enough parameters");
+        Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
 
@@ -133,32 +131,70 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     Logger::debug("User info set - Username: " + username + ", Realname: " + realname);
 
     if (isRegistered(client)) {
-        sendReply(clientFd, "001 " + client->getNickname() + " :Welcome to the Internet Relay Network " 
-                  + client->getNickname() + "!" + client->getUsername() + "@" + client->getHostname());
+        sendReply(clientFd, "001 " + client->getNickname() + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
         Logger::debug("Registration complete, sent welcome message");
     }
 }
 
+
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "461 JOIN :Not enough parameters");
+        sendReply(clientFd, "[461] JOIN :Not enough parameters");
+        Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
-
+    //TODO check param1
     std::string channelName = cmd.getParameters()[0];
     std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
     Client* client = _server.getClientByFd(clientFd);
 
-    // TODO: Implement full channel joining logic, including:
-    // - Channel creation if it doesn't exist
-    // - Checking channel user limits
-    // - Handling invite-only channels
-    // - Handling channel keys
-    // For now, we'll just send a success message
+    // The first character is not one of '&', '#', '+', or '!'
+    if (std::string("&#+!").find(channelName[0]) == std::string::npos) {
+    sendReply(clientFd, "[403] " + channelName + " :No such channel");
+    Logger::debug("Sent [403] 'No such channel reply");
+        return;
+    }
 
-    _server.broadcast(":" + client->getNickname() + "!" + client->getUsername() + "@" + client->getHostname() + " JOIN " + channelName + "\r\n");
-    // TODO: Send channel topic (332) and names list (353, 366)
+    Channel* channel = _server.getOrCreateChannel(channelName);
+    if (!channel) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel reply'");
+        return;
+    }
+
+    if (channel->isInviteOnly() && !channel->isInvited(client)) {
+        sendReply(clientFd, "[473] " + channelName + " :Cannot join channel (+i)");
+        Logger::debug("Sent [473] 'Cannot join channel (+i)'");
+        return;
+    }
+
+    //TODO check
+    if (!channel->checkKey(key)) {
+        sendReply(clientFd, "[475] " + channelName + " :Cannot join channel (+k)");
+        Logger::debug("Sent [475] 'Cannot join channel (+k)'");
+        return;
+    }
+
+    if (channel->isFull()) {
+        sendReply(clientFd, "[471] " + channelName + " :Cannot join channel (+l)");
+        Logger::debug("Sent [471] 'Cannot join channel (+l)'");
+        return;
+    }
+
+    channel->addClient(client);
+    client->addChannel(channelName);
+
+    _server.broadcast(":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n");
+
+    if (!channel->getTopic().empty()) {
+        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + channel->getTopic());
+    }
+
+    std::string names = channel->getNames();
+    sendReply(clientFd, "353 " + client->getNickname() + " = " + channelName + " :" + names);
+    sendReply(clientFd, "366 " + client->getNickname() + " " + channelName + " :End of /NAMES list");
 }
+
 
 void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     if (cmd.getParameters().size() < 2) {
@@ -186,18 +222,25 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
 }
 
 
+/*
+It checks that the nickname is not empty and not longer than 9 characters.
+The first character must be a letter or one of the special characters defined in the RFC.
+The remaining characters can be letters, digits, hyphens, or the special characters.
+*/
 bool CommandExecutor::isValidNickname(const std::string& nickname) const {
     if (nickname.empty() || nickname.length() > 9) {
         return false;
     }
-    
-    if (!std::isalpha(nickname[0]) && !strchr("[]\\`_^{|}", nickname[0])) {
+
+    // First character must be a letter or special character
+    if (!std::isalpha(nickname[0]) && nickname.find_first_of("[]\\`_^{|}") != 0) {
         return false;
     }
 
+    // Rest of the characters
     for (size_t i = 1; i < nickname.length(); ++i) {
         char c = nickname[i];
-        if (!std::isalnum(c) && !strchr("-[]\\`^{|}", c)) {
+        if (!std::isalnum(c) && c != '-' && nickname.find_first_of("[]\\`_^{|}") != i) {
             return false;
         }
     }
@@ -205,6 +248,7 @@ bool CommandExecutor::isValidNickname(const std::string& nickname) const {
     return true;
 }
 
+// fix: should trigger welcome message only once
 bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && !client->getNickname().empty() && client->isUserSet();
 }

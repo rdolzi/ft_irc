@@ -75,28 +75,29 @@ This report details the compliance status of each command with respect to the IR
 - [ ] Must be sent before any attempt to register the connection
 - [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
 - [x] ERR_ALREADYREGISTRED (462) if already registered
+- [x] ERR_PASSWDMISMATCH (464) failed attempt at registering a connection for which a password was required and was either not given or incorrect.
 
 ### NICK
 - [x] Correct syntax: `NICK <nickname>`
-- [ ] Nickname validation (letters, digits, special characters)
+- [x] Nickname validation (letters, digits, special characters)
+- [x] Broadcast nick when updated
 - [x] ERR_NONICKNAMEGIVEN (431) if no nickname supplied
 - [x] ERR_ERRONEUSNICKNAME (432) if invalid nickname
 - [x] ERR_NICKNAMEINUSE (433) if nickname already in use
-- [ ] ERR_NICKCOLLISION (436) (Not applicable for single server)
+- [ ] ERR_NICKCOLLISION (437) if nickname is temporarily unavailable
+- [ ] ERR_RESTRICTED (484) if connection is restricted and nickname changes are not allowed
 
 ### USER
 - [x] Correct syntax: `USER <username> <mode> <unused> :<realname>`
-- [ ] Proper handling of mode parameter (currently ignored)
-- [ ] Proper handling of unused parameter (should be "*")
 - [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
 - [x] ERR_ALREADYREGISTRED (462) if already registered
 
 ### JOIN
 - [ ] Correct syntax: `JOIN <channel>{,<channel>} [<key>{,<key>}]`
-- [ ] Support for multiple channels and keys
-- [ ] Channel name validation (must start with #, &, +, or !)
-- [ ] ERR_NEEDMOREPARAMS (461) if no channel specified
-- [ ] ERR_NOSUCHCHANNEL (403) if channel doesn't exist and cannot be created
+- [x] Support for multiple channels and keys
+- [x] Channel name validation (must start with #, &, +, or !)
+- [x] ERR_NEEDMOREPARAMS (461) if no channel specified
+- [x] ERR_NOSUCHCHANNEL (403) if channel doesn't exist and cannot be created
 - [ ] ERR_TOOMANYCHANNELS (405) if user is on too many channels
 - [ ] ERR_BADCHANNELKEY (475) if channel key (password) is invalid
 - [ ] ERR_BANNEDFROMCHAN (474) if user is banned from the channel
@@ -109,7 +110,7 @@ This report details the compliance status of each command with respect to the IR
 ### TOPIC
 - [ ] Correct syntax: `TOPIC <channel> [<topic>]`
 - [ ] Support for setting, clearing, and querying channel topic
-- [ ] ERR_NEEDMOREPARAMS (461) if no channel specified
+- [] ERR_NEEDMOREPARAMS (461) if no channel specified
 - [ ] ERR_NOTONCHANNEL (442) if user is not on that channel
 - [ ] ERR_CHANOPRIVSNEEDED (482) if channel mode +t is set and user is not a channel operator
 - [ ] RPL_NOTOPIC (331) if no topic is set

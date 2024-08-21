@@ -235,6 +235,7 @@ When sending messages in your IRC server implementation, you must ensure that ea
 Numeric Replies(List):
 - ERR_NEEDMOREPARAMS (461): Returned when no password is provided
 - ERR_ALREADYREGISTRED (462): Returned if PASS is sent after registration is complete
+- ERR_PASSWDMISMATCH (464): Returned to indicate a failed attempt at registering a connection for which a password was required and was either not given or incorrect.
 
 
 Numeric Replies(Full Description):
@@ -248,6 +249,11 @@ Type: Error Message
 Description: Returned if PASS is sent after registration is complete
 Client Message: ":Unauthorized command (already registered)"
 
+- ERR_PASSWDMISMATCH (464):
+Type: Error Message
+Description: Returned to indicate a failed attempt at registering a connection for which a password was required and was either not given or incorrect.
+Client Message: ":Password incorrect"
+
 #### NICK - Set or Change Nickname
 - Functionality: Set initial nickname or change current nickname
 - Status: Implemented
@@ -256,11 +262,29 @@ Client Message: ":Unauthorized command (already registered)"
 - Example 1 (Set initial): `NICK Alice`
 - Example 2 (Change): `NICK Alice2`
 
+
+##### Nickname validation
+
+in Section 2.3.
+
+```
+nickname   =  ( letter / special ) *8( letter / digit / special / "-" )
+special    =  %x5B-60 / %x7B-7D
+                  ; "[", "]", "\", "`", "_", "^", "{", "|", "}"
+letter     =  %x41-5A / %x61-7A       ; A-Z / a-z
+digit      =  %x30-39                 ; 0-9
+```
+
+- The nickname definition uses ABNF (Augmented Backus-Naur Form) notation. (*8 means "up to 8")
+- The maximum length of a nickname according to RFC 2812 is 9 characters: 1 (the first character) + 8 (the maximum additional characters). 
+- The first character must be a letter or one of the special characters defined in the RFC.
+- The remaining characters can be letters, digits, hyphens, or the special characters.
+
+
 Numeric Replies(List):
 - ERR_NONICKNAMEGIVEN (431): Returned when no nickname is provided
 - ERR_ERRONEUSNICKNAME (432): Returned when the nickname contains invalid characters
 - ERR_NICKNAMEINUSE (433): Returned when the chosen nickname is already in use
-- ERR_NICKCOLLISION (436): Returned when a nickname collision is detected (usually in a multi-server environment)
 - ERR_UNAVAILRESOURCE (437): Returned when the nickname is temporarily unavailable (e.g., due to server-side nickname hold)
 - ERR_RESTRICTED (484): Returned when the connection is restricted and nickname changes are not allowed
 
@@ -282,11 +306,6 @@ Client Message: "<nick> :Erroneous nickname"
 Type: Error Message
 Description: Returned when the chosen nickname is already in use
 Client Message: "<nick> :Nickname is already in use"
-
-- ERR_NICKCOLLISION (436):
-Type: Error Message
-Description: Returned when a nickname collision is detected (usually in a multi-server environment)
-Client Message: "<nick> :Nickname collision KILL from <user>@<host>"
 
 - ERR_UNAVAILRESOURCE (437):
 Type: Error Message
@@ -1030,3 +1049,108 @@ Note: These commands are powerful and can significantly impact server operations
 
 
 
+### IRC Message Formats: Nicknames vs Full Identifiers in RFC 2812
+
+##### 1. Server-to-Client Messages (Numeric Replies)
+
+According to RFC 2812, server-to-client messages, including error responses and numeric replies, should use the client's nickname, not the full identifier.
+
+##### Reference:
+Section 2.4 of RFC 2812 states:
+
+```
+The numeric reply MUST be sent as one message consisting of the sender
+prefix (servername), the three-digit numeric, and the target of the
+reply.
+```
+
+Further, in the same section:
+
+```
+The target of the numeric reply is usually a client's nickname.
+```
+
+##### Format:
+`:server_name numeric nickname :message`
+
+##### Example:
+`:irc.example.com 001 Alice :Welcome to the Internet Relay Network`
+
+#### 2. Client-to-Client Messages (Relayed by Server)
+
+For messages that originate from a client and are relayed to other clients by the server (such as JOIN, PART, PRIVMSG to a channel, etc.), the full client identifier should be used.
+
+##### Reference:
+Section 2.3.1 of RFC 2812 defines the message format:
+
+
+#### Conclusion
+
+1. For server-generated messages (like numeric replies), use only the nickname of the target client.
+2. For client-originated messages that are relayed to other clients, use the full client identifier (nickname!username@hostname).
+
+This distinction ensures compliance with RFC 2812 and provides the appropriate level of information for each type of message in the IRC protocol.
+
+
+
+### IRC Server and Client Identifiers
+
+#### 1. RFC 2812 Section 2.3.1 Excerpt
+
+The following is an excerpt from RFC 2812, Section 2.3.1, which defines the message format in Augmented BNF:
+
+```
+prefix     =  servername / ( nickname [ [ "!" user ] "@" host ] )
+```
+
+#### 2. Server Identifier
+
+- Format: `servername`
+- Example: `:irc.example.com`
+
+The server identifier is simply the name of the server. It's used as the prefix in messages originating from the server, such as numeric replies or server-to-client messages like PING.
+
+Usage examples:
+1. Numeric reply: `:irc.example.com 001 nickname :Welcome to the IRC Network`
+2. PING message: `:irc.example.com PING :irc.example.com`
+
+#### 3. Client Identifier
+
+- Full Format: `nickname!username@hostname`
+- Partial Formats: 
+  - `nickname`
+  - `nickname@hostname`
+  - `nickname!username`
+
+The client identifier can appear in full or partial forms, depending on the context and available information.
+
+Usage examples:
+1. Full identifier: `:john!jdoe@example.com PRIVMSG #channel :Hello, world!`
+2. Partial (nickname only): `:john QUIT :Leaving`
+
+#### 4. Explanation
+
+- The `prefix` in a message can be either a `servername` or a client identifier.
+- For server-originated messages, only the `servername` is used.
+- For client-originated messages, the full or partial client identifier is used.
+- The full client identifier (`nickname!username@hostname`) provides the most complete information about the message source.
+- Partial client identifiers may be used when full information is not available or necessary.
+
+#### 5. When to Use Each Identifier
+
+##### Server Identifier:
+- Used for all messages originating from the server itself
+- Examples: Numeric replies, PING messages, server notices
+
+##### Client Identifier:
+- Used for messages originating from or relating to specific clients
+- Full identifier (`nickname!username@hostname`) should be used whenever possible, especially for:
+  - PRIVMSG and NOTICE commands
+  - JOIN, PART, and QUIT notifications
+  - NICK changes
+  - Any other user actions that affect channels or other users
+- Partial identifiers might be used in specific contexts or when full information is not available
+
+#### 6. Important Notes
+
+The server should always use the most complete form of the client identifier available when relaying messages from one client to another.
