@@ -131,29 +131,6 @@ void Server::_acceptNewConnection() {
     Logger::info("New client connected from " + clientIP);
 }
 
-
-
-//enhanced version: added Logger
-// void Server::_handleClientMessage(int clientFd) {
-//     char buffer[1024];
-//     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-//     if (bytesRead <= 0) {
-//         if (bytesRead == 0) {
-//             Logger::info("Client disconnected: " + std::to_string(clientFd));
-//         } else {
-//             Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
-//         }
-//         _removeClient(clientFd);
-//         return;
-//     }
-
-//     buffer[bytesRead] = '\0';
-//     Logger::debug("Received message from client " + std::to_string(clientFd) + ": " + std::string(buffer));
-
-//     // TODO: Implement command parsing and execution here
-// }
-
-
 //executeCommand & sendToClient implemented
 void Server::_handleClientMessage(int clientFd) {
     char buffer[1024];
