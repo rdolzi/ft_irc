@@ -67,22 +67,16 @@ You can use any IRC client to connect to the server. For example, using HexChat:
 4. In the `Connect Commands` field, add: `/PASS <password>`
 5. Click `Connect`
 
-For more detailed instructions on connecting with HexChat, see our [HexChat Connection Guide](docs/user-guide/how-hexchat-connect.md).
+For complete user guide click here:  [Comprehensive Irc User Guide](docs/user-guide/comprehensive-irc-user-guide.md).
 
 ## Project Structure
 
 Our IRC server follows a modular architecture with the following key components:
 
-- Server: Manages client connections and message routing
+- Server: Manages client connections, channels, command execution, message routing
 - Client: Represents a connected user
 - Command Executor: Interprets and executes IRC commands
 - Logger: Provides a centralized logging system
-
-
-## Authors
-
-- [rdolzi](https://github.com/rdolzi)
-- [Fbiondo00](https://github.com/Fbiondo00)
 
 
 ## References
@@ -100,5 +94,6 @@ For a deeper understanding of the IRC protocol, refer to the following RFCs:
 - [RFC 2813 - Internet Relay Chat: Server Protocol](https://tools.ietf.org/html/rfc2813)
 
 - [RFC 7194 - Default Port for Internet Relay Chat (IRC) via TLS/SSL](https://tools.ietf.org/html/rfc7194)
+
 
 For user documentation and guides, please check the [docs](./docs) directory.

@@ -4,6 +4,7 @@
 #include "../client/client.hpp"
 #include "../logger/logger.hpp"
 #include "./command/command.hpp"
+#include "./channel/channel.hpp"
 #include "./command/commandParser.hpp"
 #include "./command/commandExecutor.hpp"
 #include <string>
@@ -29,6 +30,7 @@ private:
     std::map<int, Client*> _clients;
     std::vector<pollfd> _pollFds;
     CommandExecutor* _cmdExecutor;
+    std::map<std::string, Channel*> _channels;
 
     void _acceptNewConnection();
     void _handleClientMessage(int clientFd);
@@ -52,6 +54,7 @@ public:
     bool isNicknameTaken(const std::string& nickname) const;
     Client* getClientByNickname(const std::string& nickname);
     Client* getClientByFd(int fd);
+    Channel* getOrCreateChannel(const std::string& channelName);
 };
 
 #endif // SERVER_HPP

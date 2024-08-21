@@ -139,60 +139,75 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
 
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "[461] JOIN :Not enough parameters");
+        sendReply(clientFd, "461 JOIN :Not enough parameters");
         Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
-    //TODO check param1
+
     std::string channelName = cmd.getParameters()[0];
     std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
     Client* client = _server.getClientByFd(clientFd);
 
-    // The first character is not one of '&', '#', '+', or '!'
+    // Check if the channel name is valid
     if (std::string("&#+!").find(channelName[0]) == std::string::npos) {
-    sendReply(clientFd, "[403] " + channelName + " :No such channel");
-    Logger::debug("Sent [403] 'No such channel reply");
+        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
 
     Channel* channel = _server.getOrCreateChannel(channelName);
     if (!channel) {
-        sendReply(clientFd, "[403] " + channelName + " :No such channel");
-        Logger::debug("Sent [403] 'No such channel reply'");
+        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
 
+    // Check invite-only status
     if (channel->isInviteOnly() && !channel->isInvited(client)) {
-        sendReply(clientFd, "[473] " + channelName + " :Cannot join channel (+i)");
+        sendReply(clientFd, "473 " + channelName + " :Cannot join channel (+i)");
         Logger::debug("Sent [473] 'Cannot join channel (+i)'");
         return;
     }
 
-    //TODO check
+    // Check channel key
     if (!channel->checkKey(key)) {
-        sendReply(clientFd, "[475] " + channelName + " :Cannot join channel (+k)");
+        sendReply(clientFd, "475 " + channelName + " :Cannot join channel (+k)");
         Logger::debug("Sent [475] 'Cannot join channel (+k)'");
         return;
     }
 
+    // Check user limit
     if (channel->isFull()) {
-        sendReply(clientFd, "[471] " + channelName + " :Cannot join channel (+l)");
+        sendReply(clientFd, "471 " + channelName + " :Cannot join channel (+l)");
         Logger::debug("Sent [471] 'Cannot join channel (+l)'");
         return;
     }
 
-    channel->addClient(client);
-    client->addChannel(channelName);
-
-    _server.broadcast(":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n");
-
-    if (!channel->getTopic().empty()) {
-        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + channel->getTopic());
+    // Add member to channel
+    if (!channel->addMember(client, key)) {
+        // This should not happen if all checks above pass, but just in case
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
     }
 
+    // Broadcast join message to all clients in the channel
+    _server.broadcast(":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n");
+
+    // Send channel topic
+    std::string topic = channel->getTopic();
+    if (!topic.empty()) {
+        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + topic);
+    } else {
+        sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set");
+    }
+
+    // Send names list
     std::string names = channel->getNames();
     sendReply(clientFd, "353 " + client->getNickname() + " = " + channelName + " :" + names);
     sendReply(clientFd, "366 " + client->getNickname() + " " + channelName + " :End of /NAMES list");
+
+    // Update client's channel list
+    client->addChannel(channelName);
 }
 
 

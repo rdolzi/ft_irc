@@ -8,6 +8,7 @@ SRCS = $(wildcard $(SRC_DIR)/*.cpp) \
        $(wildcard $(SRC_DIR)/client/*.cpp) \
        $(wildcard $(SRC_DIR)/server/*.cpp) \
 	   $(wildcard $(SRC_DIR)/server/command/*.cpp) \
+	   $(wildcard $(SRC_DIR)/server/channel/*.cpp) \
 	   $(wildcard $(SRC_DIR)/logger/*.cpp) 
 
 # Object files
