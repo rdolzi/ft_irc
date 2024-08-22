@@ -7,14 +7,14 @@
 
 class Channel {
 private:
-    int _userLimit;
-    bool _inviteOnly;
     std::string _name;
     std::string _topic;
-    std::string _key;
     std::vector<Client*> _members;
     std::vector<Client*> _operators;
+    std::string _key;
     std::vector<Client*> _invitedClients;
+    bool _inviteOnly;
+    int _userLimit;
 
 public:
     Channel();

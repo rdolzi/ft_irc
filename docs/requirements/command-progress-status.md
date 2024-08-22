@@ -99,13 +99,13 @@ This report details the compliance status of each command with respect to the IR
 - [x] ERR_NEEDMOREPARAMS (461) if no channel specified
 - [x] ERR_NOSUCHCHANNEL (403) if channel doesn't exist and cannot be created
 - [ ] ERR_TOOMANYCHANNELS (405) if user is on too many channels
-- [ ] ERR_BADCHANNELKEY (475) if channel key (password) is invalid
+- [x] ERR_BADCHANNELKEY (475) if channel key (password) is invalid
 - [ ] ERR_BANNEDFROMCHAN (474) if user is banned from the channel
-- [ ] ERR_INVITEONLYCHAN (473) if channel is invite-only and user isn't invited
-- [ ] ERR_CHANNELISFULL (471) if channel is at capacity
-- [ ] RPL_TOPIC (332) to send channel topic on successful join
-- [ ] RPL_NAMREPLY (353) to list users in channel after join
-- [ ] RPL_ENDOFNAMES (366) to end the names list
+- [x] ERR_INVITEONLYCHAN (473) if channel is invite-only and user isn't invited
+- [x] ERR_CHANNELISFULL (471) if channel is at capacity
+- [x] RPL_TOPIC (332) to send channel topic on successful join
+- [x] RPL_NAMREPLY (353) to list users in channel after join
+- [x] RPL_ENDOFNAMES (366) to end the names list
 
 ### TOPIC
 - [ ] Correct syntax: `TOPIC <channel> [<topic>]`

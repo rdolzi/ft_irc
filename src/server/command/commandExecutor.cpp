@@ -16,7 +16,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
     }
 
     if (!isRegistered(client) && command != "PASS" && command != "NICK" && command != "USER") {
-        sendReply(clientFd, "451 * :You have not registered");
+        sendReply(clientFd, "[451] * :You have not registered");
         return;
     }
 
@@ -139,7 +139,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
 
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "461 JOIN :Not enough parameters");
+        sendReply(clientFd, "[461] JOIN :Not enough parameters");
         Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
@@ -150,42 +150,41 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
 
     // Check if the channel name is valid
     if (std::string("&#+!").find(channelName[0]) == std::string::npos) {
-        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
         Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
 
     Channel* channel = _server.getOrCreateChannel(channelName);
     if (!channel) {
-        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
         Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
 
     // Check invite-only status
     if (channel->isInviteOnly() && !channel->isInvited(client)) {
-        sendReply(clientFd, "473 " + channelName + " :Cannot join channel (+i)");
+        sendReply(clientFd, "[473] " + channelName + " :Cannot join channel (+i)");
         Logger::debug("Sent [473] 'Cannot join channel (+i)'");
         return;
     }
 
     // Check channel key
     if (!channel->checkKey(key)) {
-        sendReply(clientFd, "475 " + channelName + " :Cannot join channel (+k)");
+        sendReply(clientFd, "[475] " + channelName + " :Cannot join channel (+k)");
         Logger::debug("Sent [475] 'Cannot join channel (+k)'");
         return;
     }
 
     // Check user limit
     if (channel->isFull()) {
-        sendReply(clientFd, "471 " + channelName + " :Cannot join channel (+l)");
+        sendReply(clientFd, "[471] " + channelName + " :Cannot join channel (+l)");
         Logger::debug("Sent [471] 'Cannot join channel (+l)'");
         return;
     }
 
     // Add member to channel
     if (!channel->addMember(client, key)) {
-        // This should not happen if all checks above pass, but just in case
         Logger::error("Failed to add member to channel after all checks passed");
         return;
     }
@@ -196,15 +195,16 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     // Send channel topic
     std::string topic = channel->getTopic();
     if (!topic.empty()) {
-        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + topic);
-    } else {
-        sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set");
-    }
+        sendReply(clientFd, "[332] " + client->getNickname() + " " + channelName + " :" + topic);
+    } 
+    // else {
+    //     sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set");
+    // }
 
     // Send names list
     std::string names = channel->getNames();
-    sendReply(clientFd, "353 " + client->getNickname() + " = " + channelName + " :" + names);
-    sendReply(clientFd, "366 " + client->getNickname() + " " + channelName + " :End of /NAMES list");
+    sendReply(clientFd, "[353] " + client->getNickname() + " = " + channelName + " :" + names);
+    sendReply(clientFd, "[366] " + client->getNickname() + " " + channelName + " :End of /NAMES list");
 
     // Update client's channel list
     client->addChannel(channelName);
@@ -213,7 +213,7 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
 
 void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     if (cmd.getParameters().size() < 2) {
-        sendReply(clientFd, "411 :No recipient given (PRIVMSG)");
+        sendReply(clientFd, "[411] :No recipient given (PRIVMSG)");
         return;
     }
 
@@ -226,12 +226,11 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
         // TODO: Implement channel messaging
         // Check if channel exists, if user is in channel, if user can speak in channel
     } else {
-        // Private message
         Client* recipient = _server.getClientByNickname(target);
         if (recipient) {
-            sendReply(recipient->getFd(), ":" + sender->getNickname() + "!" + sender->getUsername() + "@" + sender->getHostname() + " PRIVMSG " + target + " :" + message);
-        } else {
-            sendReply(clientFd, "401 " + sender->getNickname() + " " + target + " :No such nick/channel");
+            sendReply(recipient->getFd(), ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message);
+        } else { //?
+            sendReply(clientFd, "[401] " + sender->getNickname() + " " + target + " :No such nick/channel");
         }
     }
 }
@@ -267,17 +266,6 @@ bool CommandExecutor::isValidNickname(const std::string& nickname) const {
 bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && !client->getNickname().empty() && client->isUserSet();
 }
-
-
-// void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
-//     Client* client = _server.getClientByFd(clientFd);
-//     std::string target = client->getNickname();
-//     if (target.empty()) {
-//         target = "*";  // Use * if nickname is not set yet
-//     }
-//     std::string formattedReply = ":" + _server.getServerName() + " " + reply;
-//     _server.sendToClient(clientFd, formattedReply + "\r\n");
-// }
 
 void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
     std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";

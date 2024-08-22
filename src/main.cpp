@@ -54,3 +54,4 @@ USER marco 0 * :Marco Rossi
 
 
 //kvIRC
+//check if all messages sent from server have \r\n
