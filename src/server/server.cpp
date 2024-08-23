@@ -2,7 +2,7 @@
 #include "server.hpp"
 
 
-//enhanced version: added Logger
+
 Server::Server(int port, const std::string& password) : _port(port), _password(password), _serverName("ft_irc.com") {
     _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (_serverSocket == -1) {
@@ -183,12 +183,6 @@ void Server::broadcast(const std::string& message, int senderFd) {
     }
 }
 
-
-
-// void Server::sendToClient(int clientFd, const std::string& message) {
-//     send(clientFd, message.c_str(), message.length(), 0);
-// }
-
 void Server::sendToClient(int clientFd, const std::string& message) {
     ssize_t bytesSent = send(clientFd, message.c_str(), message.length(), 0);
     if (bytesSent == -1) {
@@ -247,13 +241,15 @@ std::string Server::_getIPAddress(const struct sockaddr_in& clientAddr) const {
     return std::string(ipStr);
 }
 
-Channel* Server::getOrCreateChannel(const std::string& channelName) {
+Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd) {
     std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
     if (it != _channels.end()) {
         return it->second;
     }
     Channel* newChannel = new Channel(channelName);
     _channels[channelName] = newChannel;
+    Client * client = getClientByFd(clientFd);
+    client->setOperator(true);
     return newChannel;
 }
 

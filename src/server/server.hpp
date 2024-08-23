@@ -54,7 +54,7 @@ public:
     bool isNicknameTaken(const std::string& nickname) const;
     Client* getClientByNickname(const std::string& nickname);
     Client* getClientByFd(int fd);
-    Channel* getOrCreateChannel(const std::string& channelName);
+    Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd);
     Channel* getChannel(const std::string& channelName);
     void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = nullptr);
 };

@@ -164,7 +164,7 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
         return;
     }
 
-    Channel* channel = _server.getOrCreateChannel(channelName);
+    Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
     if (!channel) {
         sendReply(clientFd, "[403] " + channelName + " :No such channel");
         Logger::debug("Sent [403] 'No such channel' reply");
