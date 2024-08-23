@@ -15,14 +15,23 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         return;
     }
 
+    if (command == "PASS") {
+        executePass(clientFd, cmd);
+        return;
+    }
+
+    // Check if PASS has been received before allowing other commands
+    if (!client->isPassReceived()) {
+        sendReply(clientFd, " * :Password required");
+        return;
+    }
+
     if (!isRegistered(client) && command != "PASS" && command != "NICK" && command != "USER") {
         sendReply(clientFd, "[451] * :You have not registered");
         return;
     }
 
-    if (command == "PASS") {
-        executePass(clientFd, cmd);
-    } else if (command == "NICK") {
+    if (command == "NICK") {
         executeNick(clientFd, cmd);
     } else if (command == "USER") {
         executeUser(clientFd, cmd);
@@ -32,7 +41,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         executePrivmsg(clientFd, cmd);
     }  else {
         Logger::warning("Unimplemented command: " + command);
-        sendReply(clientFd, "421 * " + command + " :Unknown command");
+        sendReply(clientFd, "[421] * " + command + " :Unknown command");
     }
 }
 
@@ -271,4 +280,171 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
     std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
     Logger::debug("Sending reply to client " + std::to_string(clientFd) + ": " + formattedReply);
     _server.sendToClient(clientFd, formattedReply);
+}
+
+
+void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
+    if (cmd.getParameters().size() < 2) {
+        sendReply(clientFd, "[461] MODE :Not enough parameters");
+        return;
+    }
+
+    std::string target = cmd.getParameters()[0];
+    std::string modestring = cmd.getParameters()[1];
+    std::vector<std::string> args(cmd.getParameters().begin() + 2, cmd.getParameters().end());
+
+    if (target[0] == '#' || target[0] == '&') {
+        handleChannelMode(clientFd, target, modestring, args);
+    } else {
+        handleUserMode(clientFd, target, modestring);
+    }
+}
+
+
+void CommandExecutor::handleChannelMode(int clientFd, const std::string& channelName, const std::string& modestring, const std::vector<std::string>& args) {
+    // 1. Validate the channel
+    Channel* channel = _server.getChannel(channelName);
+    if (!channel) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        return;
+    }
+
+    // 2. Check if the client has operator privileges
+    Client* client = _server.getClientByFd(clientFd);
+    bool isOperator = channel->isOperator(client);
+
+    // 3. Initialize variables for processing modes
+    bool adding = true;
+    size_t argIndex = 0;
+    std::string modeChanges;
+    std::string modeArgs;
+    int paramModeCount = 0;
+
+    // 4. Process each character in the modestring
+    for (size_t i = 0; i < modestring.length(); ++i) {
+        char mode = modestring[i];
+        if (mode == '+') {
+            adding = true;
+            modeChanges += "+";
+        } else if (mode == '-') {
+            adding = false;
+            modeChanges += "-";
+        } else {
+            bool requiresParam = (mode == 'k' || mode == 'o' || mode == 'l');
+            if (requiresParam && paramModeCount >= 3) {
+                break;  // Max 3 parameter modes per command
+            }
+
+            if (!isOperator) {
+                sendReply(clientFd, "[482] " + channelName + " :You're not channel operator");
+                continue;
+            }
+
+            switch (mode) {
+                case 'i':
+                    channel->setInviteOnly(adding);
+                    modeChanges += mode;
+                    break;
+                case 't':
+                    channel->setTopicRestricted(adding);
+                    modeChanges += mode;
+                    break;
+                case 'k': // Channel key (password)
+                    if (adding && argIndex < args.size()) {
+                        channel->setKey(args[argIndex]);
+                        modeChanges += mode;
+                        modeArgs += " " + args[argIndex];
+                        argIndex++;
+                        paramModeCount++;
+                    } else if (!adding) {
+                        channel->removeKey();
+                        modeChanges += mode;
+                        paramModeCount++;
+                    }
+                    break;
+                case 'o':
+                    if (argIndex < args.size()) {
+                        Client* targetClient = _server.getClientByNickname(args[argIndex]);
+                        if (targetClient) {
+                            if (adding) {
+                                channel->addOperator(targetClient);
+                            } else {
+                                channel->removeOperator(targetClient);
+                            }
+                            modeChanges += mode;
+                            modeArgs += " " + args[argIndex];
+                            paramModeCount++;
+                        }
+                        argIndex++;
+                    }
+                    break;
+                case 'l': // User limit
+                    if (adding && argIndex < args.size()) {
+                        channel->setUserLimit(std::stoi(args[argIndex]));
+                        modeChanges += mode;
+                        modeArgs += " " + args[argIndex];
+                        argIndex++;
+                        paramModeCount++;
+                    } else if (!adding) {
+                        channel->removeUserLimit();
+                        modeChanges += mode;
+                    }
+                    break;
+                default:
+                    sendReply(clientFd, "[501] " + std::string(1, mode) + " :is unknown mode char to me");
+            }
+        }
+    }
+
+    // 5. Build the mode change string && broadcast
+    if (!modeChanges.empty()) {
+        std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + modeChanges + modeArgs;
+        _server.broadcastToChannel(channelName, modeMessage);
+    }
+}
+
+void CommandExecutor::handleUserMode(int clientFd, const std::string& nickname, const std::string& modestring) {
+    Client* targetClient = _server.getClientByNickname(nickname);
+    if (!targetClient) {
+        sendReply(clientFd, "[401] " + nickname + " :No such nick/channel");
+        return;
+    }
+
+    Client* sourceClient = _server.getClientByFd(clientFd);
+    if (sourceClient != targetClient) {
+        sendReply(clientFd, "[502] :Cannot change mode for other users");
+        return;
+    }
+
+    bool adding = true;
+    std::string modeChanges;
+
+     for (size_t i = 0; i < modestring.length(); ++i) {
+        char mode = modestring[i];
+        if (mode == '+') {
+            adding = true;
+            modeChanges += "+";
+        } else if (mode == '-') {
+            adding = false;
+            modeChanges += "-";
+        } else {
+            switch (mode) {
+                case 'i':
+                    targetClient->setInvisible(adding);
+                    modeChanges += mode;
+                    break;
+                default:
+                    sendReply(clientFd, "[501] :Unknown MODE flag");
+            }
+        }
+    }
+
+    if (!modeChanges.empty()) {
+        std::string modeMessage = ":" + sourceClient->getNickname() + " MODE " + nickname + " " + modeChanges;
+        sendReply(clientFd, modeMessage);
+    }
+
+    // Send the current user modes
+    std::string currentModes = targetClient->getModeString();
+    sendReply(clientFd, "[221] " + nickname + " +" + currentModes);
 }

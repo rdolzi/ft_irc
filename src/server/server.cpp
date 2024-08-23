@@ -256,3 +256,24 @@ Channel* Server::getOrCreateChannel(const std::string& channelName) {
     _channels[channelName] = newChannel;
     return newChannel;
 }
+
+
+Channel* Server::getChannel(const std::string& channelName) {
+    std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
+    if (it != _channels.end()) {
+        return it->second;
+    }
+    return NULL;
+}
+
+void Server::broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient) {
+    Channel* channel = getChannel(channelName);
+    if (channel) {
+        std::vector<Client*> members = channel->getMembers();
+        for (std::vector<Client*>::iterator it = members.begin(); it != members.end(); ++it) {
+            if (*it != excludeClient) {
+                sendToClient((*it)->getFd(), message);
+            }
+        }
+    }
+}

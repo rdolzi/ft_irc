@@ -1,7 +1,7 @@
 #include "client.hpp"
 #include <algorithm>
 
-Client::Client(int fd) : _fd(fd), _isPasswordSet(false), _isUserSet(false) {}
+Client::Client(int fd) : _fd(fd), _isOperator(false), _isPasswordSet(false), _isUserSet(false), _passReceived(false){}
 
 Client::~Client() {}
 
@@ -43,9 +43,6 @@ void Client::removeChannel(const std::string& channel) {
     _channels.erase(std::remove(_channels.begin(), _channels.end(), channel), _channels.end());
 }
 
-void Client::setOperator(bool isOperator) {
-    _isOperator = isOperator;
-}
 
 bool Client::isInChannel(const std::string& channel) const {
     return std::find(_channels.begin(), _channels.end(), channel) != _channels.end();
@@ -85,4 +82,62 @@ void Client::setUser(bool isSet) {
 
 std::string Client::getFullClientIdentifier() const {
     return _nickname + "!" + _username + "@" + _hostname;
+}
+
+bool Client::isPassReceived() const {
+    return _passReceived;
+}
+
+void Client::setPassReceived(bool received) { _passReceived = received; }
+
+
+// void Client::setRestricted(bool restricted) { _restricted = restricted; }
+// bool Client::isRestricted() const { return _restricted; }
+
+
+
+void Client::setInvisible(bool invisible) {
+    if (invisible) {
+        _modes.insert('i');
+    } else {
+        _modes.erase('i');
+    }
+}
+
+
+void Client::setRestricted(bool restricted) {
+    if (restricted) {
+        _modes.insert('r');
+    } else {
+        _modes.erase('r');
+    }
+}
+
+bool Client::isInvisible() const {
+    return _modes.find('i') != _modes.end();
+}
+
+bool Client::receivesWallops() const {
+    return _modes.find('w') != _modes.end();
+}
+
+bool Client::isRestricted() const {
+    return _modes.find('r') != _modes.end();
+}
+
+void Client::setOperator(bool op) {
+    _isOperator = op;
+    if (op) {
+        _modes.insert('o');
+    } else {
+        _modes.erase('o');
+    }
+}
+
+std::string Client::getModeString() const {
+    std::string modeString;
+    for (std::set<char>::const_iterator it = _modes.begin(); it != _modes.end(); ++it) {
+        modeString += *it;
+    }
+    return modeString;
 }

@@ -14,6 +14,7 @@ private:
     std::string _key;
     std::vector<Client*> _invitedClients;
     bool _inviteOnly;
+    bool _topicRestricted;
     int _userLimit;
 
 public:
@@ -51,6 +52,11 @@ public:
     bool isFull() const;
     std::string getNames() const;
     void inviteClient(Client* client);
+    void setTopicRestricted(bool restricted);
+    void removeKey();
+    void removeUserLimit();
+    bool isTopicRestricted() const;
+    size_t getClientCount() const;
 };
 
 #endif // CHANNEL_HPP

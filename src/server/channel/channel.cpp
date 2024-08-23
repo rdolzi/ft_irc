@@ -3,11 +3,14 @@
 
 Channel::Channel() : _inviteOnly(false), _userLimit(-1) {}
 
-Channel::Channel(const std::string& name) : _name(name), _inviteOnly(false), _userLimit(-1) {}
+
+Channel::Channel(const std::string& name) : _name(name), _inviteOnly(false), _topicRestricted(false), _userLimit(-1) {}
+
 
 Channel::Channel(const Channel& other)
     : _name(other._name), _topic(other._topic), _members(other._members),
       _operators(other._operators), _key(other._key), _inviteOnly(other._inviteOnly),
+      _topicRestricted(other._topicRestricted),
       _userLimit(other._userLimit) {}
 
 Channel::~Channel() {}
@@ -20,6 +23,7 @@ Channel& Channel::operator=(const Channel& other) {
         _operators = other._operators;
         _key = other._key;
         _inviteOnly = other._inviteOnly;
+        _topicRestricted = other._topicRestricted;
         _userLimit = other._userLimit;
     }
     return *this;
@@ -111,4 +115,38 @@ bool Channel::addMember(Client* client, const std::string& key) {
     }
     
     return false;
+}
+
+
+
+
+void Channel::setTopicRestricted(bool restricted) {
+    _topicRestricted = restricted;
+}
+
+void Channel::removeKey() {
+    _key.clear();
+}
+
+
+
+void Channel::removeUserLimit() {
+    _userLimit = -1;
+}
+
+// bool Channel::supportsModes() const {
+//     return true;
+// }
+
+
+
+bool Channel::isTopicRestricted() const {
+    return _topicRestricted;
+}
+
+
+
+
+size_t Channel::getClientCount() const {
+    return _members.size();
 }

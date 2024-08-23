@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <set>
 
 class Client {
 private:
@@ -15,6 +16,9 @@ private:
     bool _isOperator;                    // Whether the client is an operator
     bool _isPasswordSet;                 // Whether password is set
     bool _isUserSet;                     // Whether client has successfully sent the USER command during the IRC registration process.
+    bool _passReceived; //wheter PASS command has been executed
+    // bool _restricted;
+    std::set<char> _modes;
 
 public:
     Client(int fd);
@@ -45,6 +49,15 @@ public:
     
     bool isInChannel(const std::string& channel) const;
     std::string getFullClientIdentifier() const;
+    bool isPassReceived() const;
+    void setPassReceived(bool received);
+    void setRestricted(bool restricted);
+    bool isRestricted() const;
+
+    void setInvisible(bool invisible);
+    bool isInvisible() const;
+    bool receivesWallops() const;
+    std::string getModeString() const;
 };
 
 #endif // CLIENT_HPP

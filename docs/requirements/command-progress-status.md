@@ -72,7 +72,7 @@ This report details the compliance status of each command with respect to the IR
 
 ### PASS
 - [x] Correct syntax: `PASS <password>`
-- [ ] Must be sent before any attempt to register the connection
+- [x] Must be sent before any attempt to register the connection
 - [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
 - [x] ERR_ALREADYREGISTRED (462) if already registered
 - [x] ERR_PASSWDMISMATCH (464) failed attempt at registering a connection for which a password was required and was either not given or incorrect.
@@ -126,12 +126,11 @@ This report details the compliance status of each command with respect to the IR
 - [ ] RPL_AWAY (301) if recipient is away
 
 ### MODE (for channels)
-- [ ] Correct syntax: `MODE <channel> <modestring> [<mode arguments>...]`
-- [ ] Support for channel modes: i, t, k, o, l
-- [ ] ERR_NEEDMOREPARAMS (461) if not enough parameters
-- [ ] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges
-- [ ] ERR_NOCHANMODES (477) if channel doesn't support modes
-- [ ] ERR_UNKNOWNMODE (472) if mode character is unknown
+- [x] Correct syntax: `MODE <channel> <modestring> [<mode arguments>...]`
+- [x] Support for channel modes: i, t, k, o, l
+- [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
+- [x] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges
+- [x] ERR_UMODEUNKNOWNFLAG (501) if mode character is unknown
 
 
 ### INVITE

@@ -55,6 +55,8 @@ public:
     Client* getClientByNickname(const std::string& nickname);
     Client* getClientByFd(int fd);
     Channel* getOrCreateChannel(const std::string& channelName);
+    Channel* getChannel(const std::string& channelName);
+    void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = nullptr);
 };
 
 #endif // SERVER_HPP

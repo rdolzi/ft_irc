@@ -767,6 +767,8 @@ Numeric Replies:
 - Repeatability: Can be used multiple times
 - Official Syntax for channel modes: `MODE <channel> <modestring> [<mode arguments>...]`
 - Official Syntax for user modes: `MODE <nickname> <modestring>`
+ Parameters: <channel> *( ( "-" / "+" ) *<modes> *<modeparams> )
+ RFC 2812, section 3.2.3: The maximum number of parameter modes is three (3) per command.
 - Examples:
   - Set invite-only: `MODE #channel +i`
   - Remove invite-only: `MODE #channel -i`
@@ -789,8 +791,7 @@ Supported Channel Modes:
 Supported User Modes:
 - `+i/-i`: Set/unset invisible mode
 - `+w/-w`: Set/unset receive wallops
-- `+r/-r`: Set/unset restricted user connection
-- `+o/-o`: Set/unset operator flag (should only be set by the server)
+
 
 Numeric Replies(List):
 - ERR_NEEDMOREPARAMS (461): Returned when not enough parameters are given
