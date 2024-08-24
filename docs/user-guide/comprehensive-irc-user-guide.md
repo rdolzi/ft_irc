@@ -285,8 +285,7 @@ Numeric Replies(List):
 - ERR_NONICKNAMEGIVEN (431): Returned when no nickname is provided
 - ERR_ERRONEUSNICKNAME (432): Returned when the nickname contains invalid characters
 - ERR_NICKNAMEINUSE (433): Returned when the chosen nickname is already in use
-- ERR_UNAVAILRESOURCE (437): Returned when the nickname is temporarily unavailable (e.g., due to server-side nickname hold)
-- ERR_RESTRICTED (484): Returned when the connection is restricted and nickname changes are not allowed
+
 
 
 
@@ -306,16 +305,6 @@ Client Message: "<nick> :Erroneous nickname"
 Type: Error Message
 Description: Returned when the chosen nickname is already in use
 Client Message: "<nick> :Nickname is already in use"
-
-- ERR_UNAVAILRESOURCE (437):
-Type: Error Message
-Description: Returned when the nickname is temporarily unavailable (e.g., due to server-side nickname hold)
-Client Message: "<nick/channel> :Nick/channel is temporarily unavailable"
-
-- ERR_RESTRICTED (484):
-Type: Error Message
-Description: Returned when the connection is restricted and nickname changes are not allowed
-Client Message: ":Your connection is restricted!"
 
 #### USER - Set Username and Realname
 - Functionality: Set the username and realname during registration

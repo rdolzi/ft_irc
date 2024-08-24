@@ -84,8 +84,8 @@ This report details the compliance status of each command with respect to the IR
 - [x] ERR_NONICKNAMEGIVEN (431) if no nickname supplied
 - [x] ERR_ERRONEUSNICKNAME (432) if invalid nickname
 - [x] ERR_NICKNAMEINUSE (433) if nickname already in use
-- [ ] ERR_NICKCOLLISION (437) if nickname is temporarily unavailable
-- [ ] ERR_RESTRICTED (484) if connection is restricted and nickname changes are not allowed
+
+
 
 ### USER
 - [x] Correct syntax: `USER <username> <mode> <unused> :<realname>`
@@ -93,14 +93,13 @@ This report details the compliance status of each command with respect to the IR
 - [x] ERR_ALREADYREGISTRED (462) if already registered
 
 ### JOIN
-- [ ] Correct syntax: `JOIN <channel>{,<channel>} [<key>{,<key>}]`
+- [x] Correct syntax: `JOIN <channel>{,<channel>} [<key>{,<key>}]`
 - [x] Support for multiple channels and keys
 - [x] Channel name validation (must start with #, &, +, or !)
 - [x] ERR_NEEDMOREPARAMS (461) if no channel specified
 - [x] ERR_NOSUCHCHANNEL (403) if channel doesn't exist and cannot be created
 - [ ] ERR_TOOMANYCHANNELS (405) if user is on too many channels
 - [x] ERR_BADCHANNELKEY (475) if channel key (password) is invalid
-- [ ] ERR_BANNEDFROMCHAN (474) if user is banned from the channel
 - [x] ERR_INVITEONLYCHAN (473) if channel is invite-only and user isn't invited
 - [x] ERR_CHANNELISFULL (471) if channel is at capacity
 - [x] RPL_TOPIC (332) to send channel topic on successful join
@@ -108,13 +107,14 @@ This report details the compliance status of each command with respect to the IR
 - [x] RPL_ENDOFNAMES (366) to end the names list
 
 ### TOPIC
-- [ ] Correct syntax: `TOPIC <channel> [<topic>]`
-- [ ] Support for setting, clearing, and querying channel topic
-- [] ERR_NEEDMOREPARAMS (461) if no channel specified
-- [ ] ERR_NOTONCHANNEL (442) if user is not on that channel
-- [ ] ERR_CHANOPRIVSNEEDED (482) if channel mode +t is set and user is not a channel operator
-- [ ] RPL_NOTOPIC (331) if no topic is set
-- [ ] RPL_TOPIC (332) to send the channel topic
+- [x] Correct syntax: `TOPIC <channel> [<topic>]`
+- [x] Support for setting, clearing, and querying channel topic
+- [x] ERR_NEEDMOREPARAMS (461) if no channel specified
+- [x] ERR_NOTONCHANNEL (442) if user is not on that channel
+- [x] ERR_CHANOPRIVSNEEDED (482) if channel mode +t is set and user is not a channel operator
+- [x] RPL_NOTOPIC (331) if no topic is set
+- [x] RPL_TOPIC (332) to send the channel topic
+
 
 ### PRIVMSG
 - [x] Correct syntax: `PRIVMSG <msgtarget> :<message>`
@@ -123,7 +123,6 @@ This report details the compliance status of each command with respect to the IR
 - [ ] ERR_NOTEXTTOSEND (412) if no message given
 - [ ] ERR_CANNOTSENDTOCHAN (404) if cannot send to channel
 - [x] ERR_NOSUCHNICK (401) if recipient doesn't exist
-- [ ] RPL_AWAY (301) if recipient is away
 
 ### MODE (for channels)
 - [x] Correct syntax: `MODE <channel> <modestring> [<mode arguments>...]`
@@ -134,13 +133,13 @@ This report details the compliance status of each command with respect to the IR
 
 
 ### INVITE
-- [ ] Correct syntax: `INVITE <nickname> <channel>`
-- [ ] ERR_NEEDMOREPARAMS (461) if not enough parameters
-- [ ] ERR_NOSUCHNICK (401) if the nickname doesn't exist
-- [ ] ERR_NOTONCHANNEL (442) if user is not on that channel
-- [ ] ERR_USERONCHANNEL (443) if user is already on that channel
-- [ ] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges and channel is invite-only
-- [ ] RPL_INVITING (341) to confirm invitation
+- [x] Correct syntax: `INVITE <nickname> <channel>`
+- [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
+- [x] ERR_NOSUCHNICK (401) if the nickname doesn't exist
+- [x] ERR_NOTONCHANNEL (442) if user is not on that channel
+- [x] ERR_USERONCHANNEL (443) if user is already on that channel
+- [x] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges and channel is invite-only
+- [x] RPL_INVITING (341) to confirm invitation
 
 ### KICK
 - [ ] Correct syntax: `KICK <channel> <user> [<comment>]`

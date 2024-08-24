@@ -249,7 +249,8 @@ Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd
     Channel* newChannel = new Channel(channelName);
     _channels[channelName] = newChannel;
     Client * client = getClientByFd(clientFd);
-    client->setOperator(true);
+    newChannel->addOperator(client);
+    // client->setOperator(true);
     return newChannel;
 }
 

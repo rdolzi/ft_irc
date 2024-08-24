@@ -30,6 +30,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         sendReply(clientFd, "[451] * :You have not registered");
         return;
     }
+    
 
     if (command == "NICK") {
         executeNick(clientFd, cmd);
@@ -39,7 +40,13 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         executeJoin(clientFd, cmd);
     } else if (command == "PRIVMSG") {
         executePrivmsg(clientFd, cmd);
-    }  else {
+    }  else if (command == "MODE") {
+        executeMode(clientFd, cmd);
+    } else if (command == "TOPIC") {
+        executeTopic(clientFd, cmd);
+    } else if (command == "INVITE") {
+        executeInvite(clientFd, cmd);
+    } else {
         Logger::warning("Unimplemented command: " + command);
         sendReply(clientFd, "[421] * " + command + " :Unknown command");
     }
@@ -105,7 +112,7 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
 
     if (oldNick.empty() && isRegistered(client)) {
         Logger::debug("Nickname set for the first time: " + newNick);
-        sendReply(clientFd, "001 " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
+        sendReply(clientFd, "[001] " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
         Logger::debug("[001] Registration complete, sent welcome message");
     } else {
         _server.broadcast(":" + oldClientIdentifier + " NICK " + newNick + "\r\n", clientFd);
@@ -284,6 +291,13 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 
 
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
+
+    Client* client = _server.getClientByFd(clientFd);
+
+    if (!client->isOperator()){
+        sendReply(clientFd, "[481] "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges");
+        return;
+    }
     if (cmd.getParameters().size() < 2) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;
@@ -295,8 +309,6 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
 
     if (target[0] == '#' || target[0] == '&') {
         handleChannelMode(clientFd, target, modestring, args);
-    } else {
-        handleUserMode(clientFd, target, modestring);
     }
 }
 
@@ -309,18 +321,16 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         return;
     }
 
-    // 2. Check if the client has operator privileges
-    Client* client = _server.getClientByFd(clientFd);
-    bool isOperator = channel->isOperator(client);
 
-    // 3. Initialize variables for processing modes
+    // 2. Initialize variables for processing modes
+    Client* client = _server.getClientByFd(clientFd);
     bool adding = true;
     size_t argIndex = 0;
     std::string modeChanges;
     std::string modeArgs;
     int paramModeCount = 0;
 
-    // 4. Process each character in the modestring
+    // 3. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
         char mode = modestring[i];
         if (mode == '+') {
@@ -333,11 +343,6 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
             bool requiresParam = (mode == 'k' || mode == 'o' || mode == 'l');
             if (requiresParam && paramModeCount >= 3) {
                 break;  // Max 3 parameter modes per command
-            }
-
-            if (!isOperator) {
-                sendReply(clientFd, "[482] " + channelName + " :You're not channel operator");
-                continue;
             }
 
             switch (mode) {
@@ -396,55 +401,120 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         }
     }
 
-    // 5. Build the mode change string && broadcast
+    // 4. Build the mode change string && broadcast
     if (!modeChanges.empty()) {
         std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + modeChanges + modeArgs;
         _server.broadcastToChannel(channelName, modeMessage);
     }
 }
 
-void CommandExecutor::handleUserMode(int clientFd, const std::string& nickname, const std::string& modestring) {
-    Client* targetClient = _server.getClientByNickname(nickname);
-    if (!targetClient) {
-        sendReply(clientFd, "[401] " + nickname + " :No such nick/channel");
+void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
+    Client* client = _server.getClientByFd(clientFd);
+    if (cmd.getParameters().empty() || cmd.getParameters().size() > 2) {
+        sendReply(clientFd, "[461] TOPIC :Not enough parameters");
         return;
     }
 
-    Client* sourceClient = _server.getClientByFd(clientFd);
-    if (sourceClient != targetClient) {
-        sendReply(clientFd, "[502] :Cannot change mode for other users");
+    std::string channelName = cmd.getParameters()[0];
+    Channel* channel = _server.getChannel(channelName);
+
+    if (!channel) {
         return;
     }
 
-    bool adding = true;
-    std::string modeChanges;
+    if (!channel->isMember(client)) {
+        sendReply(clientFd, "[442] " + channelName + " :You're not on that channel");
+        return;
+    }
 
-     for (size_t i = 0; i < modestring.length(); ++i) {
-        char mode = modestring[i];
-        if (mode == '+') {
-            adding = true;
-            modeChanges += "+";
-        } else if (mode == '-') {
-            adding = false;
-            modeChanges += "-";
+    
+    if (channel->isTopicRestricted() && !channel->isOperator(client)) {
+        sendReply(clientFd, "[482] " + channelName + " :You're not channel operator");
+        return;
+    }
+
+    // If there's no topic provided, we're querying the current topic
+    if (cmd.getParameters().size() == 1) {
+        std::string currentTopic = channel->getTopic();
+        if (currentTopic.empty()) {
+            sendReply(clientFd, "[331] " + channelName + " :No topic is set");
         } else {
-            switch (mode) {
-                case 'i':
-                    targetClient->setInvisible(adding);
-                    modeChanges += mode;
-                    break;
-                default:
-                    sendReply(clientFd, "[501] :Unknown MODE flag");
-            }
+            sendReply(clientFd, "[332] " + channelName + " :" + currentTopic);
         }
+        return;
     }
 
-    if (!modeChanges.empty()) {
-        std::string modeMessage = ":" + sourceClient->getNickname() + " MODE " + nickname + " " + modeChanges;
-        sendReply(clientFd, modeMessage);
+    
+    // if args == 2, 
+    std::string newTopic = cmd.getParameters()[1];
+    channel->setTopic(newTopic);
+
+    // Broadcast the new topic to all members of the channel
+    std::string topicMessage = ":" + client->getFullClientIdentifier() + " TOPIC " + channelName + " :" + newTopic;
+    _server.broadcastToChannel(channelName, topicMessage);
+
+    // Send confirmation to the client who set the topic
+    sendReply(clientFd, "[332] " + channelName + " :" + newTopic);
+}
+
+void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
+    Client* inviter = _server.getClientByFd(clientFd);
+
+
+    // Check for correct number of parameters
+    if (!cmd.getParameters().size() == 2) {
+        sendReply(clientFd, "[461] INVITE :Not enough parameters");
+        return;
     }
 
-    // Send the current user modes
-    std::string currentModes = targetClient->getModeString();
-    sendReply(clientFd, "[221] " + nickname + " +" + currentModes);
+    std::string inviterNick = cmd.getParameters()[0];
+    std::string channelName = cmd.getParameters()[1];
+
+    // Check if the invitee exists
+    Client* invitee = _server.getClientByNickname(inviterNick);
+    if (!invitee) {
+        sendReply(clientFd, "[401] " + inviterNick + " :No such nick/channel");
+        return;
+    }
+
+    // Check if the channel exists
+    Channel* channel = _server.getChannel(channelName);
+    if (!channel) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        return;
+    }
+    
+    // Check if the inviter is on the channel
+    if (!channel->isMember(inviter)) {
+        sendReply(clientFd, "[442] " + channelName + " :You're not on that channel");
+        return;
+    }
+
+    if (!inviter->isOperator()){
+    sendReply(clientFd, "[482] "+inviter->getFullClientIdentifier()+" "+channelName+ " :You're not channel operator");
+    return;
+    }
+
+    // Check if the invitee is already on the channel
+    if (channel->isMember(invitee)) {
+        sendReply(clientFd, "[443] " + inviterNick + " " + channelName + " :is already on channel");
+        return;
+    }
+
+    // Check if the channel is invite-only and if the inviter has the necessary privileges
+    if (!channel->isOperator(inviter)) {
+        sendReply(clientFd, "[482] "+inviter->getFullClientIdentifier()+" "+channelName+ " :You're not channel operator");
+        return;
+    }
+
+    // All checks passed, proceed with the invitation
+    channel->inviteClient(invitee);
+
+    // Send confirmation to the inviter
+    sendReply(clientFd, "[341] " + inviterNick + " " + channelName);
+
+    // Send invitation to the invitee
+    std::string inviteMsg = ":" + inviter->getFullClientIdentifier() + " INVITE " + inviterNick + " :" + channelName + "\r\n";
+    _server.sendToClient(invitee->getFd(), inviteMsg);
+
 }
