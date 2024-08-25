@@ -35,7 +35,6 @@ std::vector<Client*> Channel::getMembers() const { return _members; }
 std::vector<Client*> Channel::getOperators() const { return _operators; }
 std::string Channel::getKey() const { return _key; }
 bool Channel::isInviteOnly() const { return _inviteOnly; }
-int Channel::getUserLimit() const { return _userLimit; }
 
 void Channel::setTopic(const std::string& topic) { _topic = topic; }
 void Channel::setKey(const std::string& key) { _key = key; }
@@ -63,10 +62,6 @@ bool Channel::isMember(Client* client) const {
 
 bool Channel::isOperator(Client* client) const {
     return std::find(_operators.begin(), _operators.end(), client) != _operators.end();
-}
-
-size_t Channel::getMemberCount() const {
-    return _members.size();
 }
 
 bool Channel::isInvited(Client* client) const {
@@ -134,19 +129,9 @@ void Channel::removeUserLimit() {
     _userLimit = -1;
 }
 
-// bool Channel::supportsModes() const {
-//     return true;
-// }
-
 
 
 bool Channel::isTopicRestricted() const {
     return _topicRestricted;
 }
 
-
-
-
-size_t Channel::getClientCount() const {
-    return _members.size();
-}

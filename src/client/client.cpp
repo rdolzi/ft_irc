@@ -21,9 +21,7 @@ std::vector<std::string> Client::getChannels() const {
     return _channels;
 }
 
-bool Client::isOperator() const {
-    return _isOperator;
-}
+
 
 void Client::setNickname(const std::string& nickname) {
     _nickname = nickname;
@@ -90,54 +88,3 @@ bool Client::isPassReceived() const {
 
 void Client::setPassReceived(bool received) { _passReceived = received; }
 
-
-// void Client::setRestricted(bool restricted) { _restricted = restricted; }
-// bool Client::isRestricted() const { return _restricted; }
-
-
-
-void Client::setInvisible(bool invisible) {
-    if (invisible) {
-        _modes.insert('i');
-    } else {
-        _modes.erase('i');
-    }
-}
-
-
-void Client::setRestricted(bool restricted) {
-    if (restricted) {
-        _modes.insert('r');
-    } else {
-        _modes.erase('r');
-    }
-}
-
-bool Client::isInvisible() const {
-    return _modes.find('i') != _modes.end();
-}
-
-bool Client::receivesWallops() const {
-    return _modes.find('w') != _modes.end();
-}
-
-bool Client::isRestricted() const {
-    return _modes.find('r') != _modes.end();
-}
-
-void Client::setOperator(bool op) {
-    _isOperator = op;
-    if (op) {
-        _modes.insert('o');
-    } else {
-        _modes.erase('o');
-    }
-}
-
-std::string Client::getModeString() const {
-    std::string modeString;
-    for (std::set<char>::const_iterator it = _modes.begin(); it != _modes.end(); ++it) {
-        modeString += *it;
-    }
-    return modeString;
-}

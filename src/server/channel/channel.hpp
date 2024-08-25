@@ -31,7 +31,7 @@ public:
     std::vector<Client*> getOperators() const;
     std::string getKey() const;
     bool isInviteOnly() const;
-    int getUserLimit() const;
+
 
     // Setters
     void setTopic(const std::string& topic);
@@ -46,7 +46,6 @@ public:
     void removeOperator(Client* client);
     bool isMember(Client* client) const;
     bool isOperator(Client* client) const;
-    size_t getMemberCount() const;
     bool isInvited(Client* client) const;
     bool checkKey(const std::string& key) const;
     bool isFull() const;
@@ -56,7 +55,6 @@ public:
     void removeKey();
     void removeUserLimit();
     bool isTopicRestricted() const;
-    size_t getClientCount() const;
 };
 
 #endif // CHANNEL_HPP
