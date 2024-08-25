@@ -142,13 +142,13 @@ This report details the compliance status of each command with respect to the IR
 - [x] RPL_INVITING (341) to confirm invitation
 
 ### KICK
-- [ ] Correct syntax: `KICK <channel> <user> [<comment>]`
-- [ ] ERR_NEEDMOREPARAMS (461) if not enough parameters
-- [ ] ERR_NOSUCHCHANNEL (403) if the channel doesn't exist
-- [ ] ERR_BADCHANMASK (476) if the channel name is invalid
-- [ ] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges
-- [ ] ERR_USERNOTINCHANNEL (441) if the user to be kicked is not in the channel
-- [ ] ERR_NOTONCHANNEL (442) if the kicking user is not in the channel
+- [x] Correct syntax: `KICK <channel> <user> [<comment>]`
+- [x] ERR_NEEDMOREPARAMS (461) if not enough parameters
+- [x] ERR_NOSUCHCHANNEL (403) if the channel doesn't exist
+- [x] ERR_BADCHANMASK (476) if the channel name is invalid
+- [x] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges
+- [x] ERR_USERNOTINCHANNEL (441) if the user to be kicked is not in the channel
+- [x] ERR_NOTONCHANNEL (442) if the kicking user is not in the channel
 
 
 

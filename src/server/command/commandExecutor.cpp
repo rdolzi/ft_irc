@@ -46,7 +46,9 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         executeTopic(clientFd, cmd);
     } else if (command == "INVITE") {
         executeInvite(clientFd, cmd);
-    } else {
+    } else if (command == "KICK") {
+        executeKick(clientFd, cmd);
+    }else {
         Logger::warning("Unimplemented command: " + command);
         sendReply(clientFd, "[421] * " + command + " :Unknown command");
     }
@@ -164,12 +166,14 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
     Client* client = _server.getClientByFd(clientFd);
 
+
     // Check if the channel name is valid
-    if (std::string("&#+!").find(channelName[0]) == std::string::npos) {
+    if (!isValidChannelName(channelName)) {
         sendReply(clientFd, "[403] " + channelName + " :No such channel");
-        Logger::debug("Sent [403] 'No such channel' reply");
+         Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
+
 
     Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
     if (!channel) {
@@ -237,7 +241,14 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     std::string message = cmd.getParameters()[1];
     Client* sender = _server.getClientByFd(clientFd);
 
+    
     if (target[0] == '#') {
+        // Check if the channel name is valid
+        if (!isValidChannelName(target)) {
+        sendReply(clientFd, "[403] " + target + " :No such channel");
+         Logger::debug("Sent [403] 'No such channel' reply");
+        return;
+        }
         // Channel message
         // TODO: Implement channel messaging
         // Check if channel exists, if user is in channel, if user can speak in channel
@@ -517,4 +528,90 @@ void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
     std::string inviteMsg = ":" + inviter->getFullClientIdentifier() + " INVITE " + inviterNick + " :" + channelName + "\r\n";
     _server.sendToClient(invitee->getFd(), inviteMsg);
 
+}
+
+
+void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
+    Client* kicker = _server.getClientByFd(clientFd);
+
+    // Check for correct number of parameters
+    if (!cmd.getParameters().size() == 2 || !cmd.getParameters().size() == 3) {
+        sendReply(clientFd, "[461] KICK :Not enough parameters");
+        return;
+    }
+
+    std::string channelName = cmd.getParameters()[0];
+    std::string kickedNick = cmd.getParameters()[1];
+    std::string reason = (cmd.getParameters().size() > 2) ? cmd.getParameters()[2] : "No reason given";
+
+    // Check if the channel exists
+    Channel* channel = _server.getChannel(channelName);
+    if (!channel) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        return;
+    }
+    
+    //TODO
+    // Check if the channel name is valid
+    if (channelName[0] != '#' && channelName[0] != '&') {
+        sendReply(clientFd, "[476] " + channelName + " :Bad Channel Mask");
+        return;
+    }
+
+    // Check if the kicker is on the channel
+    if (!channel->isMember(kicker)) {
+        sendReply(clientFd, "[442] " + channelName + " :You're not on that channel");
+        return;
+    }
+
+    // Check if the kicker has channel operator privileges
+    if (!channel->isOperator(kicker)) {
+        sendReply(clientFd, "[482] " + channelName + " :You're not channel operator");
+        return;
+    }
+
+    // Check if the kicked user is on the channel
+    Client* kicked = _server.getClientByNickname(kickedNick);
+    if (!kicked || !channel->isMember(kicked)) {
+        sendReply(clientFd, "[441] " + kickedNick + " " + channelName + " :They aren't on that channel");
+        return;
+    }
+
+    // All checks passed, proceed with kicking the user
+    channel->removeMember(kicked);
+
+    // Construct the kick message
+    std::string kickMsg = ":" + kicker->getFullClientIdentifier() + " KICK " + channelName + " " + kickedNick + " :" + reason + "\r\n";
+
+    // Send the kick message to all members of the channel, including the kicked user
+    _server.broadcastToChannel(channelName, kickMsg);
+
+    // Additionally, send the message to the kicked user
+    _server.sendToClient(kicked->getFd(), kickMsg);
+
+    // Log the kick action
+    Logger::info("User " + kickedNick + " was kicked from " + channelName + " by " + kicker->getNickname() + ". Reason: " + reason);
+}
+
+
+
+bool CommandExecutor::isValidChannelName(const std::string& channelName) {
+    // Check if the channel name is empty or too long
+    if (channelName.empty() || channelName.length() > 50) {
+        return false;
+    }
+
+    // Check if the first character is valid
+    if (channelName[0] != '&' && channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!') {
+        return false;
+    }
+
+    // Check for space, control G (ASCII 7), or comma
+    for (size_t i = 1; i < channelName.length(); ++i) {
+        char c = channelName[i];
+        if (c == ' ' || c == 7 || c == ',') {
+            return false;
+        }
+    }
+    return true;
 }
