@@ -3,7 +3,17 @@
 
 
 
-Server::Server(int port, const std::string& password) : _port(port), _password(password), _serverName("ft_irc.com") {
+Server::Server(int port, const std::string& password) 
+    : _serverSocket(-1),
+      _port(port),
+      _password(password),
+      _serverName("ft_irc.com"),
+      _clients(),
+      _pollFds(),
+      _cmdExecutor(NULL),
+      _maxChannelsPerClient(3)
+      {
+
     _serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (_serverSocket == -1) {
         Logger::error("Failed to create socket: " + std::string(strerror(errno)));
@@ -17,12 +27,13 @@ Server::Server(int port, const std::string& password) : _port(port), _password(p
     }
 
     struct sockaddr_in address;
+    std::memset(&address, 0, sizeof(address));
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
     address.sin_port = htons(_port);
 
     if (bind(_serverSocket, (struct sockaddr*)&address, sizeof(address)) == -1) {
-        Logger::error("Failed to bind to port " + std::to_string(_port) + ": " + std::string(strerror(errno)));
+        Logger::error("Failed to bind to port :  "+ std::string(strerror(errno)));
         throw std::runtime_error("Failed to bind to port");
     }
 
@@ -31,13 +42,7 @@ Server::Server(int port, const std::string& password) : _port(port), _password(p
         throw std::runtime_error("Failed to listen on socket");
     }
 
-    // Set server socket to non-blocking mode
-    int flags = fcntl(_serverSocket, F_GETFL, 0);
-    if (flags == -1) {
-        Logger::error("Failed to get socket flags: " + std::string(strerror(errno)));
-        throw std::runtime_error("Failed to get socket flags");
-    }
-    if (fcntl(_serverSocket, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(_serverSocket, F_SETFL, O_NONBLOCK) == -1) {
         Logger::error("Failed to set socket to non-blocking mode: " + std::string(strerror(errno)));
         throw std::runtime_error("Failed to set socket to non-blocking mode");
     }
@@ -73,12 +78,14 @@ void Server::run() {
             Logger::error("Poll failed: " + std::string(strerror(errno)));
             throw std::runtime_error("Poll failed");
         }
-
+        Logger::info("A");
         for (size_t i = 0; i < _pollFds.size(); ++i) {
             if (_pollFds[i].revents & POLLIN) {
                 if (_pollFds[i].fd == _serverSocket) {
+                    Logger::info("B");
                     _acceptNewConnection();
                 } else {
+                    Logger::info("C");
                     _handleClientMessage(_pollFds[i].fd);
                 }
             }
@@ -90,6 +97,7 @@ void Server::run() {
 
 //enhanced version: added Logger
 void Server::_acceptNewConnection() {
+
     struct sockaddr_in clientAddr;
     socklen_t clientAddrLen = sizeof(clientAddr);
     int clientSocket = accept(_serverSocket, (struct sockaddr*)&clientAddr, &clientAddrLen);
@@ -104,14 +112,7 @@ void Server::_acceptNewConnection() {
         return;
     }
 
-    // Set client socket to non-blocking mode
-    int flags = fcntl(clientSocket, F_GETFL, 0);
-    if (flags == -1) {
-        Logger::error("Failed to get client socket flags: " + std::string(strerror(errno)));
-        close(clientSocket);
-        return;
-    }
-    if (fcntl(clientSocket, F_SETFL, flags | O_NONBLOCK) == -1) {
+    if (fcntl(clientSocket, F_SETFL, O_NONBLOCK) == -1) {
         Logger::error("Failed to set client socket to non-blocking mode: " + std::string(strerror(errno)));
         close(clientSocket);
         return;
@@ -131,7 +132,69 @@ void Server::_acceptNewConnection() {
     Logger::info("New client connected from " + clientIP);
 }
 
-//executeCommand & sendToClient implemented
+// void Server::_handleClientMessage(int clientFd) {
+//     char buffer[1024];
+//     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer), 0);
+//     if (bytesRead <= 0) {
+//         if (bytesRead == 0) {
+//             Logger::info("Client disconnected: " + std::to_string(clientFd));
+//         } else {
+//             Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+//         }
+//         _removeClient(clientFd);
+//         return;
+//     }
+//     Logger::info("D");
+//     buffer[bytesRead] = '\0';
+//     // Append to the client's buffer
+//     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
+
+//     // Process complete commands
+//     std::string& clientBuffer = _clients[clientFd]->getBuffer();
+//     Logger::info("CLIENT BUFFER: " + clientBuffer );
+
+//     size_t pos;
+//     while ((pos = clientBuffer.find("\r\n")) != std::string::npos) {
+//         std::string cmd = clientBuffer.substr(0, pos);
+//         clientBuffer.erase(0, pos + 2);  // Remove processed command and \r\n
+
+//         // Replace any newline characters with spaces
+//         std::replace(cmd.begin(), cmd.end(), '\n', ' ');
+
+//         // Check if the message (including \r\n) exceeds 512 bytes
+//         if (cmd.length() + 2 > 512) {
+//             Logger::warning("Received message too long from client " + std::to_string(clientFd));
+//             sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
+//             continue;  // Process next command, if any
+//         }
+//         Logger::info("CICICI");
+//         // Trim leading and trailing whitespace
+//         cmd.erase(0, cmd.find_first_not_of(" \t"));
+//         cmd.erase(cmd.find_last_not_of(" \t") + 1);
+
+//         if (!cmd.empty()) {
+//             Logger::debug("Received command from client " + std::to_string(clientFd) + ": " + cmd);
+
+//             Command parsedCmd = CommandParser::parse(cmd);
+//             if (parsedCmd.isValid()) {
+//                 Logger::info("Parsed command: " + parsedCmd.toString());
+//                 _cmdExecutor->executeCommand(clientFd, parsedCmd);
+//             } else {
+//                 Logger::warning("Invalid command received from client " + std::to_string(clientFd));
+//                 sendToClient(clientFd, ":" + getServerName() + " 421 " + getClientByFd(clientFd)->getFullClientIdentifier() + " " + parsedCmd.getCommand() + " :Unknown command\r\n");
+//             }
+//         }
+//     }
+
+//     // Check if the remaining buffer exceeds the maximum length
+//     if (clientBuffer.length() >= 510) { // 510 to allow for potential CR-LF
+//         Logger::warning("Client " + std::to_string(clientFd) + " buffer exceeds maximum length of 512.");
+//         sendToClient(clientFd, ":" + getServerName() + " :Message too long\r\n");
+//         clientBuffer.clear(); 
+//     }
+// }
+
+
 void Server::_handleClientMessage(int clientFd) {
     char buffer[1024];
     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
@@ -145,17 +208,49 @@ void Server::_handleClientMessage(int clientFd) {
         return;
     }
 
-    buffer[bytesRead] = '\0';
-    std::string message(buffer);
-    Logger::debug("Received message from client " + std::to_string(clientFd) + ": " + message);
+    if (bytesRead > 0 && buffer[bytesRead - 1] == '\n') {
+        bytesRead--;
+    }
 
-    Command cmd = CommandParser::parse(message);
-    if (cmd.isValid()) {
-        Logger::info("Parsed command: " + cmd.toString());
-        _cmdExecutor->executeCommand(clientFd, cmd);
-    } else {
-        Logger::warning("Invalid command received from client " + std::to_string(clientFd));
-        sendToClient(clientFd, ": 421 * " + cmd.getCommand() + " :Unknown command\r\n");
+    buffer[bytesRead] = '\0';
+    _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
+
+    std::string& clientBuffer = _clients[clientFd]->getBuffer();
+    Logger::info("CLIENT BUFFER: " + clientBuffer);
+
+
+    size_t pos;
+    while ((pos = clientBuffer.find("\r\n")) != std::string::npos) {
+        std::string cmd = clientBuffer.substr(0, pos);
+        clientBuffer.erase(0, pos + 2); // Remove processed command and \r\n
+
+        
+        // Check if the message (including \r\n) exceeds 512 bytes
+        if (cmd.length() + 2 > 512) {
+            Logger::warning("Received message too long from client " + std::to_string(clientFd));
+            sendToClient(clientFd, ":" + getServerName() + " " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
+            continue;
+        }
+
+
+        if (!cmd.empty()) {
+            Logger::debug("Received command from client " + std::to_string(clientFd) + ": " + cmd);
+            Command parsedCmd = CommandParser::parse(cmd);
+            if (parsedCmd.isValid()) {
+                Logger::info("Parsed command: " + parsedCmd.toString());
+                _cmdExecutor->executeCommand(clientFd, parsedCmd);
+            } else {
+                Logger::warning("Invalid command received from client " + std::to_string(clientFd));
+                sendToClient(clientFd, ":" + getServerName() + " [421] " + getClientByFd(clientFd)->getFullClientIdentifier() + " " + parsedCmd.getCommand() + " :Unknown command\r\n");
+            }
+        }
+    }
+
+    // Check if the remaining buffer exceeds the maximum length
+    if (clientBuffer.length() >= 510) {  // 510 to allow for potential \r\n
+        Logger::warning("Client " + std::to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
+        sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
+        clientBuffer.clear();
     }
 }
 
@@ -184,6 +279,12 @@ void Server::broadcast(const std::string& message, int senderFd) {
 }
 
 void Server::sendToClient(int clientFd, const std::string& message) {
+
+    std::string formattedMessage = message;
+
+    if (formattedMessage.substr(formattedMessage.length() - 2) != "\r\n") {
+        formattedMessage += "\r\n";
+    }
     ssize_t bytesSent = send(clientFd, message.c_str(), message.length(), 0);
     if (bytesSent == -1) {
         Logger::error("Failed to send message to client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
@@ -272,4 +373,50 @@ void Server::broadcastToChannel(const std::string& channelName, const std::strin
             }
         }
     }
+}
+
+bool Server::canJoinMoreChannels(const Client* client) const {
+        return client->getChannels().size() < static_cast<size_t>(_maxChannelsPerClient);
+    }
+
+int Server::getMaxChannelsPerClient() const {
+    return _maxChannelsPerClient;
+}
+
+Server::Server(const Server& other)
+    : _serverSocket(other._serverSocket),
+      _port(other._port),
+      _password(other._password),
+      _serverName(other._serverName),
+      _clients(other._clients),
+      _pollFds(other._pollFds),
+      _cmdExecutor(NULL),
+      _maxChannelsPerClient(other._maxChannelsPerClient)
+      
+  
+{
+    if (other._cmdExecutor) {
+        _cmdExecutor = new CommandExecutor(*this);
+    }
+}
+
+Server& Server::operator=(const Server& other)
+{
+    if (this != &other) {
+        _port = other._port;
+        _password = other._password;
+        _serverName = other._serverName;
+        _maxChannelsPerClient = other._maxChannelsPerClient;
+        _serverSocket = other._serverSocket;
+        _pollFds = other._pollFds;
+        _clients = other._clients;
+
+        delete _cmdExecutor;
+        if (other._cmdExecutor) {
+            _cmdExecutor = new CommandExecutor(*this);
+        } else {
+            _cmdExecutor = NULL;
+        }
+    }
+    return *this;
 }

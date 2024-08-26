@@ -3,7 +3,8 @@
 
 # Log files
 *.log
-
+# Script files
+*.sh
 # Ignore  folder and subfolders
 /docs/architecture/
 /obj/

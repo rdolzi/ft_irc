@@ -17,6 +17,7 @@ private:
     bool _isUserSet;                     // Whether client has successfully sent the USER command during the IRC registration process.
     bool _passReceived; //wheter PASS command has been executed
     // bool _restricted;
+    std::string _buffer;
 
 public:
     Client(int fd);
@@ -47,6 +48,8 @@ public:
     std::string getFullClientIdentifier() const;
     bool isPassReceived() const;
     void setPassReceived(bool received);
+    void appendToBuffer(const std::string& data);
+    std::string& getBuffer();
 };
 
 #endif // CLIENT_HPP

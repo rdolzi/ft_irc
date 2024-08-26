@@ -1,7 +1,7 @@
 #include "client.hpp"
 #include <algorithm>
 
-Client::Client(int fd) : _fd(fd), _isOperator(false), _isPasswordSet(false), _isUserSet(false), _passReceived(false){}
+Client::Client(int fd) : _fd(fd),  _isPasswordSet(false), _isUserSet(false), _passReceived(false){}
 
 Client::~Client() {}
 
@@ -87,4 +87,13 @@ bool Client::isPassReceived() const {
 }
 
 void Client::setPassReceived(bool received) { _passReceived = received; }
+
+
+void Client::appendToBuffer(const std::string& data) {
+        _buffer += data;
+    }
+
+std::string& Client::getBuffer() {
+    return _buffer;
+}
 

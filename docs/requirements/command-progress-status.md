@@ -8,9 +8,9 @@ This report details the compliance status of each command with respect to the IR
 ## General Protocol Compliance
 
 1. Message formatting:
-   - [ ] Messages end with `\r\n` (Not consistently implemented)
-   - [ ] Maximum message length of 512 characters including `\r\n` (Not implemented)
-   - [ ] Proper handling of the maximum 15 parameters per command (Not implemented)
+   - [x] Messages end with `\r\n` 
+   - [x] Maximum message length of 512 characters including `\r\n` 
+   - [x] Proper handling of the maximum 15 parameters per command 
 
    Example:
    ```
@@ -26,9 +26,9 @@ This report details the compliance status of each command with respect to the IR
    ```
 
 3. Robust data handling:
-   - [ ] Proper buffering of incoming data until a complete command is received
-   - [ ] Proper handling of partial data reception and packet aggregation
-   - [ ] Proper parsing of commands split across multiple TCP packets
+   - [x] Proper buffering of incoming data until a complete command is received
+   - [x] Proper handling of partial data reception and packet aggregation
+   - [x] Proper parsing of commands split across multiple TCP packets
 
    Example (using netcat):
    ```
@@ -44,8 +44,7 @@ This report details the compliance status of each command with respect to the IR
 
 
 4. Network condition handling:
-   - [ ] Proper error handling for various network conditions (including low bandwidth)
-   - [ ] Handling of simultaneous commands from multiple clients
+   - [x] Handling of simultaneous commands from multiple clients
 
    Example (simulating network lag by multiple users):
    ```
@@ -57,13 +56,6 @@ This report details the compliance status of each command with respect to the IR
    JOIN #channel\r\n
    ```
 
-5. Buffer management:
-   - [ ] Proper handling of buffer overflow situations
-
-   Example (sending a very large message):
-   ```
-   PRIVMSG #channel :Lorem ipsum dolor sit amet... (repeated to exceed buffer size)
-   ```
 
 
 
@@ -98,7 +90,7 @@ This report details the compliance status of each command with respect to the IR
 - [x] Channel name validation (must start with #, &, +, or !)
 - [x] ERR_NEEDMOREPARAMS (461) if no channel specified
 - [x] ERR_NOSUCHCHANNEL (403) if channel doesn't exist and cannot be created
-- [ ] ERR_TOOMANYCHANNELS (405) if user is on too many channels
+- [x] ERR_TOOMANYCHANNELS (405) if user is on too many channels
 - [x] ERR_BADCHANNELKEY (475) if channel key (password) is invalid
 - [x] ERR_INVITEONLYCHAN (473) if channel is invite-only and user isn't invited
 - [x] ERR_CHANNELISFULL (471) if channel is at capacity
@@ -149,8 +141,5 @@ This report details the compliance status of each command with respect to the IR
 - [x] ERR_CHANOPRIVSNEEDED (482) if user doesn't have channel operator privileges
 - [x] ERR_USERNOTINCHANNEL (441) if the user to be kicked is not in the channel
 - [x] ERR_NOTONCHANNEL (442) if the kicking user is not in the channel
-
-
-
 
 

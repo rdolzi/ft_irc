@@ -31,16 +31,19 @@ private:
     std::vector<pollfd> _pollFds;
     CommandExecutor* _cmdExecutor;
     std::map<std::string, Channel*> _channels;
+    int _maxChannelsPerClient;
 
     void _acceptNewConnection();
     void _handleClientMessage(int clientFd);
     void _removeClient(int clientFd);
     std::string _getIPAddress(const struct sockaddr_in& clientAddr) const;
-
+    
 
 public:
     Server(int port, const std::string& password);
     ~Server();
+    Server(const Server& other);
+    Server& operator=(const Server& other);
 
     void run();
     void broadcast(const std::string& message, int senderFd = -1);
@@ -54,9 +57,11 @@ public:
     bool isNicknameTaken(const std::string& nickname) const;
     Client* getClientByNickname(const std::string& nickname);
     Client* getClientByFd(int fd);
-    Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd);
+    Channel* getOrCreateChannel(const std::string& channelName, int clientFd);
     Channel* getChannel(const std::string& channelName);
     void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = nullptr);
+    bool canJoinMoreChannels(const Client* client) const;
+    int getMaxChannelsPerClient() const;
 };
 
 #endif // SERVER_HPP

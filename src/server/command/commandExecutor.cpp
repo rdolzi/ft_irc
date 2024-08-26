@@ -15,6 +15,12 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         return;
     }
 
+    // Check for too many parameters
+    if (cmd.getParameters().size() > 15) {
+        sendReply(clientFd, command + " :Too many parameters. Max is set to 15.");
+        return;
+    }
+
     if (command == "PASS") {
         executePass(clientFd, cmd);
         return;
@@ -76,6 +82,7 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     std::string password = cmd.getParameters()[0];
     if (password == _server.getPassword()) {
         client->setPassword(true);
+         client->setPassReceived(true);
         //sendReply(clientFd, ":Password accepted");
         Logger::debug("Client "+ std::to_string(clientFd)  + " set password correctly.");
     } else {
@@ -112,7 +119,7 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
     std::string oldNick = client->getNickname();std::string oldClientIdentifier = client->getFullClientIdentifier();
     client->setNickname(newNick);
 
-    if (oldNick.empty() && isRegistered(client)) {
+    if (oldNick.empty() && !isRegistered(client)) {
         Logger::debug("Nickname set for the first time: " + newNick);
         sendReply(clientFd, "[001] " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
         Logger::debug("[001] Registration complete, sent welcome message");
@@ -149,7 +156,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     Logger::debug("User info set - Username: " + username + ", Realname: " + realname);
 
     if (isRegistered(client)) {
-        sendReply(clientFd, "001 " + client->getNickname() + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
+        sendReply(clientFd, "[001] " + client->getNickname() + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
         Logger::debug("Registration complete, sent welcome message");
     }
 }
@@ -174,6 +181,12 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
         return;
     }
 
+
+    // Check if the client has reached the channel join limit
+    if (!_server.canJoinMoreChannels(client)) {
+        sendReply(clientFd, "[405] " + channelName + " :You have joined too many channels");
+        return;
+    }
 
     Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
     if (!channel) {
@@ -302,25 +315,20 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 
 
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
-
-    Client* client = _server.getClientByFd(clientFd);
-
-    if (!client->isOperator()){
-        sendReply(clientFd, "[481] "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges");
-        return;
-    }
     if (cmd.getParameters().size() < 2) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;
     }
-
     std::string target = cmd.getParameters()[0];
     std::string modestring = cmd.getParameters()[1];
     std::vector<std::string> args(cmd.getParameters().begin() + 2, cmd.getParameters().end());
 
-    if (target[0] == '#' || target[0] == '&') {
-        handleChannelMode(clientFd, target, modestring, args);
+    // Check if the channel name is valid
+    if (!isValidChannelName(target)) {
+        sendReply(clientFd, "[476] " + target + " :Bad Channel Mask");
+        return;
     }
+    handleChannelMode(clientFd, target, modestring, args);
 }
 
 
@@ -332,7 +340,6 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         return;
     }
 
-
     // 2. Initialize variables for processing modes
     Client* client = _server.getClientByFd(clientFd);
     bool adding = true;
@@ -340,6 +347,11 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
     std::string modeChanges;
     std::string modeArgs;
     int paramModeCount = 0;
+
+    if (!channel->isOperator(client)){
+        sendReply(clientFd, "[481] "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges");
+        return;
+    }
 
     // 3. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
@@ -473,7 +485,7 @@ void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
 
 
     // Check for correct number of parameters
-    if (!cmd.getParameters().size() == 2) {
+    if (cmd.getParameters().size() != 2) {
         sendReply(clientFd, "[461] INVITE :Not enough parameters");
         return;
     }
@@ -501,7 +513,7 @@ void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
         return;
     }
 
-    if (!inviter->isOperator()){
+    if (!channel->isOperator(inviter)){
     sendReply(clientFd, "[482] "+inviter->getFullClientIdentifier()+" "+channelName+ " :You're not channel operator");
     return;
     }
@@ -535,7 +547,7 @@ void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
     Client* kicker = _server.getClientByFd(clientFd);
 
     // Check for correct number of parameters
-    if (!cmd.getParameters().size() == 2 || !cmd.getParameters().size() == 3) {
+    if (cmd.getParameters().size() != 2 || cmd.getParameters().size() != 3) {
         sendReply(clientFd, "[461] KICK :Not enough parameters");
         return;
     }
@@ -551,9 +563,9 @@ void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
         return;
     }
     
-    //TODO
+
     // Check if the channel name is valid
-    if (channelName[0] != '#' && channelName[0] != '&') {
+    if (!isValidChannelName(channelName)) {
         sendReply(clientFd, "[476] " + channelName + " :Bad Channel Mask");
         return;
     }
