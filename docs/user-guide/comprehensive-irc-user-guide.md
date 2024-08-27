@@ -353,7 +353,6 @@ Numeric Replies(List):
 - ERR_NOSUCHCHANNEL (403): Returned when the channel name is invalid
 - ERR_TOOMANYCHANNELS (405): Returned when the client has joined too many channels
 - ERR_BADCHANNELKEY (475): Returned when the channel key (password) is incorrect
-- ERR_BANNEDFROMCHAN (474): Returned when the client is banned from the channel
 - ERR_INVITEONLYCHAN (473): Returned when the channel is invite-only and the client is not invited
 - ERR_CHANNELISFULL (471): Returned when the channel has reached its user limit
 - RPL_TOPIC (332): Sent to the client with the channel's topic upon successful join
@@ -381,11 +380,6 @@ Client Message: "<channel name> :You have joined too many channels"
 Type: Error Message
 Description: Returned when the channel key (password) is incorrect
 Client Message: "<channel> :Cannot join channel (+k)"
-
-- ERR_BANNEDFROMCHAN (474):
-Type: Error Message
-Description: Returned when the client is banned from the channel
-Client Message: "<channel> :Cannot join channel (+b)"
 
 - ERR_INVITEONLYCHAN (473):
 Type: Error Message
@@ -564,8 +558,6 @@ Numeric Replies(List):
 - ERR_NORECIPIENT (411): Returned when no recipient is given
 - ERR_NOTEXTTOSEND (412): Returned when no text to send is given
 - ERR_CANNOTSENDTOCHAN (404): Returned when the client cannot send to the channel (e.g., moderated channel)
-- ERR_NOTOPLEVEL (413): Returned when no toplevel domain specified
-- ERR_WILDTOPLEVEL (414): Returned when wildcard in toplevel domain
 - ERR_TOOMANYTARGETS (407): Returned when too many targets are specified
 - ERR_NOSUCHNICK (401): Returned when the nickname or channel name doesn't exist
 
@@ -584,16 +576,6 @@ Client Message: ":No text to send"
 Type: Error Message
 Description: Returned when the client cannot send to the channel (e.g., moderated channel)
 Client Message: "<channel name> :Cannot send to channel"
-
-- ERR_NOTOPLEVEL (413):
-Type: Error Message
-Description: Returned when no toplevel domain specified
-Client Message: "<mask> :No toplevel domain specified"
-
-- ERR_WILDTOPLEVEL (414):
-Type: Error Message
-Description: Returned when wildcard in toplevel domain
-Client Message: "<mask> :Wildcard in toplevel domain"
 
 - ERR_TOOMANYTARGETS (407):
 Type: Error Message
@@ -893,7 +875,7 @@ Numeric Replies(List):
 - ERR_USERONCHANNEL (443): Returned when the invited user is already on the channel
 - ERR_CHANOPRIVSNEEDED (482): Returned when the client doesn't have the necessary privileges
 - RPL_INVITING (341): Sent to the inviting client to confirm the invitation
-- RPL_AWAY (301): Sent if the invited user is away
+
 
 Numeric Replies(Full Description):
 - ERR_NEEDMOREPARAMS (461):

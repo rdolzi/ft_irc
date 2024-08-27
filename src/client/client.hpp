@@ -15,8 +15,6 @@ private:
     std::vector<std::string> _channels;  // Channels the client has joined
     bool _isPasswordSet;                 // Whether password is set
     bool _isUserSet;                     // Whether client has successfully sent the USER command during the IRC registration process.
-    bool _passReceived; //wheter PASS command has been executed
-    // bool _restricted;
     std::string _buffer;
 
 public:
@@ -46,8 +44,6 @@ public:
     
     bool isInChannel(const std::string& channel) const;
     std::string getFullClientIdentifier() const;
-    bool isPassReceived() const;
-    void setPassReceived(bool received);
     void appendToBuffer(const std::string& data);
     std::string& getBuffer();
 };

@@ -78,14 +78,11 @@ void Server::run() {
             Logger::error("Poll failed: " + std::string(strerror(errno)));
             throw std::runtime_error("Poll failed");
         }
-        Logger::info("A");
         for (size_t i = 0; i < _pollFds.size(); ++i) {
             if (_pollFds[i].revents & POLLIN) {
                 if (_pollFds[i].fd == _serverSocket) {
-                    Logger::info("B");
                     _acceptNewConnection();
                 } else {
-                    Logger::info("C");
                     _handleClientMessage(_pollFds[i].fd);
                 }
             }
@@ -144,7 +141,6 @@ void Server::_acceptNewConnection() {
 //         _removeClient(clientFd);
 //         return;
 //     }
-//     Logger::info("D");
 //     buffer[bytesRead] = '\0';
 //     // Append to the client's buffer
 //     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
@@ -167,7 +163,6 @@ void Server::_acceptNewConnection() {
 //             sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
 //             continue;  // Process next command, if any
 //         }
-//         Logger::info("CICICI");
 //         // Trim leading and trailing whitespace
 //         cmd.erase(0, cmd.find_first_not_of(" \t"));
 //         cmd.erase(cmd.find_last_not_of(" \t") + 1);
@@ -212,7 +207,7 @@ void Server::_handleClientMessage(int clientFd) {
         bytesRead--;
     }
 
-    buffer[bytesRead] = '\0';
+    //buffer[bytesRead] = '\0';
     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
 
     std::string& clientBuffer = _clients[clientFd]->getBuffer();

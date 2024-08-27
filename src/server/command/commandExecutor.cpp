@@ -27,7 +27,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
     }
 
     // Check if PASS has been received before allowing other commands
-    if (!client->isPassReceived()) {
+    if (!client->isPasswordSet()) {
         sendReply(clientFd, " * :Password required");
         return;
     }
@@ -80,9 +80,9 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     }
 
     std::string password = cmd.getParameters()[0];
+    Logger::info("Param[0]: "+ password + " actual psw: " +_server.getPassword());
     if (password == _server.getPassword()) {
         client->setPassword(true);
-         client->setPassReceived(true);
         //sendReply(clientFd, ":Password accepted");
         Logger::debug("Client "+ std::to_string(clientFd)  + " set password correctly.");
     } else {
@@ -116,7 +116,8 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
         return;
     }
 
-    std::string oldNick = client->getNickname();std::string oldClientIdentifier = client->getFullClientIdentifier();
+    std::string oldNick = client->getNickname();
+    std::string oldClientIdentifier = client->getFullClientIdentifier();
     client->setNickname(newNick);
 
     if (oldNick.empty() && !isRegistered(client)) {
@@ -155,7 +156,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
 
     Logger::debug("User info set - Username: " + username + ", Realname: " + realname);
 
-    if (isRegistered(client)) {
+    if (!isRegistered(client)) {
         sendReply(clientFd, "[001] " + client->getNickname() + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier());
         Logger::debug("Registration complete, sent welcome message");
     }
@@ -302,7 +303,6 @@ bool CommandExecutor::isValidNickname(const std::string& nickname) const {
     return true;
 }
 
-// fix: should trigger welcome message only once
 bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && !client->getNickname().empty() && client->isUserSet();
 }

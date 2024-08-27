@@ -1,7 +1,18 @@
 #include "client.hpp"
 #include <algorithm>
 
-Client::Client(int fd) : _fd(fd),  _isPasswordSet(false), _isUserSet(false), _passReceived(false){}
+Client::Client(int fd) 
+    : _fd(fd),
+      _nickname(""),
+      _username(""),
+      _realname(""),
+      _hostname(""),
+      _channels(),
+      _isPasswordSet(false),
+      _isUserSet(false),
+      _buffer("")
+{
+}
 
 Client::~Client() {}
 
@@ -81,13 +92,6 @@ void Client::setUser(bool isSet) {
 std::string Client::getFullClientIdentifier() const {
     return _nickname + "!" + _username + "@" + _hostname;
 }
-
-bool Client::isPassReceived() const {
-    return _passReceived;
-}
-
-void Client::setPassReceived(bool received) { _passReceived = received; }
-
 
 void Client::appendToBuffer(const std::string& data) {
         _buffer += data;
