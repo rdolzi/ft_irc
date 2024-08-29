@@ -62,6 +62,7 @@ public:
     void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = nullptr);
     bool canJoinMoreChannels(const Client* client) const;
     int getMaxChannelsPerClient() const;
+    std::string generateUniqueId() const;
 };
 
 #endif // SERVER_HPP

@@ -340,6 +340,8 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
     Logger::info("A");
+
+    
     if (cmd.getParameters().size() < 2 || cmd.getParameters().size() > 3) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;

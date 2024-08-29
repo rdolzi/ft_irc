@@ -337,15 +337,52 @@ std::string Server::_getIPAddress(const struct sockaddr_in& clientAddr) const {
     return std::string(ipStr);
 }
 
+// Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd) {
+//     std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
+//     if (it != _channels.end()) {
+//         return it->second;
+//     }
+//     Channel* newChannel = new Channel(channelName);
+//     _channels[channelName] = newChannel;
+//     Client * client = getClientByFd(clientFd);
+//     newChannel->addOperator(client);
+//     return newChannel;
+// }
+
 Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd) {
+    // Check if the channel already exists
     std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
     if (it != _channels.end()) {
         return it->second;
     }
-    Channel* newChannel = new Channel(channelName);
-    _channels[channelName] = newChannel;
-    Client * client = getClientByFd(clientFd);
-    newChannel->addOperator(client);
+  
+    if (channelName.empty() || (channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!' && channelName[0] != '&')) {
+        return NULL; 
+    }
+
+    Channel* newChannel = NULL;
+    Client* client = getClientByFd(clientFd);
+
+    
+    if (channelName[0] == '!') {
+        // Safe channel creation
+        std::string shortName = channelName.substr(1);
+        std::string uniqueId = generateUniqueId(); 
+        std::string fullChannelName = "!" + uniqueId + shortName;
+        
+        newChannel = new Channel(fullChannelName);
+        newChannel->addOperator(client);
+    }
+    else if (channelName[0] == '#' || channelName[0] == '&') {
+        // Standard channel creation
+        newChannel = new Channel(channelName);
+        newChannel->addOperator(client);
+    }
+    else if (channelName[0] == '+') {
+        //  no member can have the status of channel operator.
+        newChannel = new Channel(channelName);
+    }
+    _channels[newChannel->getName()] = newChannel;
     return newChannel;
 }
 
@@ -414,4 +451,16 @@ Server& Server::operator=(const Server& other)
         }
     }
     return *this;
+}
+
+
+std::string Server::generateUniqueId() const {
+    static const char alphanum[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    std::string uniqueId;
+
+    for (int i = 0; i < 5; ++i) {
+        uniqueId += alphanum[std::rand() % (sizeof(alphanum) - 1)];
+    }
+    
+    return uniqueId;
 }
