@@ -264,13 +264,21 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     Client* sender = _server.getClientByFd(clientFd);
 
     
-    if (target[0] == '#') {
+    if (isChannelSyntaxOk(target)) {
         // Check if the channel name is valid
         if (!isValidChannelName(target)) {
         sendReply(clientFd, "[403] " + target + " :No such channel");
          Logger::debug("Sent [403] 'No such channel' reply");
         return;
         }
+        Channel *channel = _server.getChannel(target);
+        if (!channel->isMember(sender)){
+            sendReply(clientFd, "[404] " + target + " ::Cannot send to channel");
+         Logger::debug("Client in not a member of channel.Sent [404] ':Cannot send to channel'");
+        }
+        Logger::info("client is sending message to channel...");
+        std::string channelMessage =  ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message;
+        _server.broadcastToChannel(target, channelMessage);
         // Channel message
         // TODO: Implement channel messaging
         // Check if channel exists, if user is in channel, if user can speak in channel
@@ -712,8 +720,12 @@ bool CommandExecutor::isValidChannelName(const std::string& channelName) {
         return false;
     }
 
-    // Check if the first character is valid
-    if (channelName[0] != '&' && channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!') {
+    // // Check if the first character is valid
+    // if (channelName[0] != '&' && channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!') {
+    //     return false;
+    // }
+    
+    if (!isChannelSyntaxOk(channelName)){
         return false;
     }
 
@@ -727,3 +739,9 @@ bool CommandExecutor::isValidChannelName(const std::string& channelName) {
     return true;
 }
 
+bool isChannelSyntaxOk(const std::string& channelName){
+    if (channelName[0] != '&' && channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!') {
+        return false;
+    }
+    return true;
+}

@@ -37,6 +37,7 @@ public:
     ~CommandExecutor();
 
     void executeCommand(int clientFd, const Command& cmd);
+    bool isChannelSyntaxOk(const std::string& channelName);
     
 };
 
