@@ -231,11 +231,12 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
 
     // Send channel topic
     std::string topic = channel->getTopic();
+    std::string prefix = channel->isOperator(client) ? "@" : "";
     if (!topic.empty()) {
-        sendReply(clientFd, "[332] " + client->getNickname() + " " + channelName + " :" + topic);
+        sendReply(clientFd, "[332] " + prefix + client->getNickname() + " " + channelName + " :" + topic);
     } 
     else {
-        sendReply(clientFd, "[331] " + client->getNickname() + " " + channelName + " :No topic is set");
+        sendReply(clientFd, "[331] " + prefix + client->getNickname() + " " + channelName + " :No topic is set");
     }
 
     
@@ -284,17 +285,15 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
          Logger::debug("Client in not a member of channel.Sent [404] ':Cannot send to channel'");
         }
         Logger::info("client is sending message to channel...");
-        std::string channelMessage =  ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message;
+        std::string prefix = channel->isOperator(sender) ? "@" : "";
+        std::string channelMessage =  ":" + sender->getFullClientIdentifier() + " PRIVMSG " + prefix + target + " :" + message;
         _server.broadcastToChannel(target, channelMessage);
-        // Channel message
-        // TODO: Implement channel messaging
-        // Check if channel exists, if user is in channel, if user can speak in channel
     } else {
         Client* recipient = _server.getClientByNickname(target);
         Logger::info("targer: "+target + "| client: "+ recipient->getNickname());
         if (recipient) {
             sendReply(recipient->getFd(), ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message);
-        } else { //?
+        } else { 
             sendReply(clientFd, "[401] " + sender->getNickname() + " " + target + " :No such nick/channel");
         }
     }
@@ -341,7 +340,7 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
     Logger::info("A");
 
-    
+
     if (cmd.getParameters().size() < 2 || cmd.getParameters().size() > 3) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;

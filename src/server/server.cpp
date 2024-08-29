@@ -280,6 +280,7 @@ void Server::sendToClient(int clientFd, const std::string& message) {
     if (formattedMessage.substr(formattedMessage.length() - 2) != "\r\n") {
         formattedMessage += "\r\n";
     }
+
     ssize_t bytesSent = send(clientFd, message.c_str(), message.length(), 0);
     if (bytesSent == -1) {
         Logger::error("Failed to send message to client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
