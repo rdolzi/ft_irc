@@ -153,7 +153,9 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     }
 
     std::string username = cmd.getParameters()[0];
-    std::string realname = cmd.getParameters()[3];
+    //std::string realname = cmd.getParameters()[3];
+    std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);
+
 
     client->setUsername(username);
     client->setRealname(realname);
@@ -764,3 +766,5 @@ void CommandExecutor::executePing(int clientFd, const Command& cmd){
     }
      sendReply(clientFd, "PONG "+ _server.getServerName());
 }
+
+
