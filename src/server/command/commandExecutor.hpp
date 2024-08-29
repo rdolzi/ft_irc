@@ -24,6 +24,7 @@ private:
     void executeTopic(int clientFd, const Command& cmd);
     void executeInvite(int clientFd, const Command& cmd);
     void executeKick(int clientFd, const Command& cmd);
+    void executePing(int clientFd, const Command& cmd);
 
     // Helper methods
     bool isValidNickname(const std::string& nickname) const;

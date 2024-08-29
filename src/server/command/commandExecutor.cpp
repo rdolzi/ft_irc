@@ -21,6 +21,11 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         return;
     }
 
+    if (command == "PING") {
+        executePing(clientFd, cmd);
+        return;
+    }
+
     if (command == "PASS") {
         executePass(clientFd, cmd);
         return;
@@ -739,9 +744,23 @@ bool CommandExecutor::isValidChannelName(const std::string& channelName) {
     return true;
 }
 
-bool isChannelSyntaxOk(const std::string& channelName){
+bool CommandExecutor::isChannelSyntaxOk(const std::string& channelName){
     if (channelName[0] != '&' && channelName[0] != '#' && channelName[0] != '+' && channelName[0] != '!') {
         return false;
     }
     return true;
+}
+
+
+void CommandExecutor::executePing(int clientFd, const Command& cmd){
+
+    if (cmd.getParameters().size() < 1) {
+        sendReply(clientFd, "[461] PING :Not enough parameters");
+        return;
+    }
+    if (cmd.getParameters()[0] != _server.getServerName()){
+        sendReply(clientFd, "[402] PING "+ cmd.getParameters()[0] +" :No such server");
+        return;
+    }
+     sendReply(clientFd, "PONG "+ _server.getServerName());
 }
