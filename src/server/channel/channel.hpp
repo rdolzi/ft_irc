@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "../../client/client.hpp"
+#include "../../logger/logger.hpp"
 
 class Channel {
 private:
