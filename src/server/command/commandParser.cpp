@@ -68,9 +68,9 @@ Command CommandParser::parse(const std::string& message) {
     std::string command = extractCommand(mutableMessage);
     std::vector<std::string> parameters = extractParameters(mutableMessage);
 
-    Logger::debug("Parsed command - Prefix: '" + prefix + "', Command: '" + command + "', Parameters: " + std::to_string(parameters.size()));
+    Logger::debug("Parsed command - Prefix: '" + prefix + "', Command: '" + command + "', Parameters: " + to_string(parameters.size()));
     for (size_t i = 0; i < parameters.size(); ++i) {
-        Logger::debug("Parameter " + std::to_string(i) + ": '" + parameters[i] + "'");
+        Logger::debug("Parameter " + to_string(i) + ": '" + parameters[i] + "'");
     }
 
     return Command(prefix, command, parameters);

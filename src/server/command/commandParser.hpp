@@ -2,6 +2,7 @@
 #define COMMANDPARSER_HPP
 
 #include "command.hpp"
+#include "../../utils/server_utils.hpp"
 #include <string>
 
 class CommandParser {

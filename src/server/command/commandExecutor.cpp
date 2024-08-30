@@ -11,7 +11,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
     Client* client = _server.getClientByFd(clientFd);
 
     if (!client) {
-        Logger::error("Client not found for fd: " + std::to_string(clientFd));
+        Logger::error("Client not found for fd: " + to_string(clientFd));
         return;
     }
 
@@ -94,7 +94,7 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     if (password == _server.getPassword()) {
         client->setPassword(true);
         //sendReply(clientFd, ":Password accepted");
-        Logger::debug("Client "+ std::to_string(clientFd)  + " set password correctly.");
+        Logger::debug("Client "+ to_string(clientFd)  + " set password correctly.");
     } else {
         sendReply(clientFd, "[464] * :Password incorrect");
         Logger::debug("Sent [464] 'password incorrect' reply");
@@ -337,7 +337,7 @@ bool CommandExecutor::isRegistered(const Client* client) const {
 
 void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
     std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
-    Logger::debug("Sending reply to client " + std::to_string(clientFd) + ": " + formattedReply);
+    Logger::debug("Sending reply to client " + to_string(clientFd) + ": " + formattedReply);
     _server.sendToClient(clientFd, formattedReply);
 }
 
@@ -356,7 +356,7 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
 
     std::vector<std::string> args;
      for (size_t i = 0; i < cmd.getParameters().size(); ++i) {
-        Logger::info("Parameter " + std::to_string(i) + ": '" + cmd.getParameters()[i] + "'");
+        Logger::info("Parameter " + to_string(i) + ": '" + cmd.getParameters()[i] + "'");
         args.push_back(cmd.getParameters()[i]);
     }
     Logger::info("2");
@@ -372,7 +372,7 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
 }
 
 // void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
-//     Logger::debug("Entering executeMode. ClientFd: " + std::to_string(clientFd));
+//     Logger::debug("Entering executeMode. ClientFd: " + to_string(clientFd));
 
 //     try {
 //         if (cmd.getParameters().size() < 2) {
@@ -397,7 +397,7 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
 //         // Check if the client exists
 //         Client* client = _server.getClientByFd(clientFd);
 //         if (!client) {
-//             Logger::error("Client not found for fd: " + std::to_string(clientFd));
+//             Logger::error("Client not found for fd: " + to_string(clientFd));
 //             return;
 //         }
 
@@ -434,7 +434,7 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
     Client* client = _server.getClientByFd(clientFd);
 
     if (!client) {
-        Logger::error("Client not found in handleChannelMode for fd: " + std::to_string(clientFd));
+        Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
         return;
     }
 
@@ -451,7 +451,7 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
     Logger::info("D");
     // 3. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
-        Logger::info("In for loop, i: "+std::to_string(i));
+        Logger::info("In for loop, i: "+to_string(i));
         char mode = modestring[i];
         if (mode == '+') {
             adding = true;
@@ -499,7 +499,7 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                     if (args.size() == 3) {
                         Client* targetClient = _server.getClientByNickname(args[2]);
                         if (!targetClient) {
-                            Logger::error("Client not found in handleChannelMode for fd: " + std::to_string(clientFd));
+                            Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
                             return;
                         }
                         Logger::info("H");
@@ -779,3 +779,45 @@ void CommandExecutor::executeCap(int clientFd){
 }
 
 
+void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
+    if (cmd.getParameters().size() < 1) {
+        sendReply(clientFd, "461 WHO :Not enough parameters");
+        return;
+    }
+
+    std::string target = cmd.getParameters()[0];
+    Client* requestingClient = _server.getClientByFd(clientFd);
+    
+    if (isChannelSyntaxOk(target)) {
+
+        Channel* channel = _server.getChannel(target);
+        if (channel) {
+            const std::vector<Client*>& members = channel->getMembers();
+            for (std::vector<Client*>::const_iterator it = members.begin(); it != members.end(); ++it) {
+                Client* member = *it;
+                std::string flags = "H"; // Here, assuming all users are "Here" and not away
+                if (channel->isOperator(member)) {
+                    flags += "@";
+                }
+                
+                sendReply(clientFd, "352 " + requestingClient->getNickname() + " " + 
+                          target + " " + member->getUsername() + " " + 
+                          member->getHostname() + " " + _server.getServerName() + " " + 
+                          member->getNickname() + " " + flags + " :0 " + 
+                          member->getRealname());
+            }
+        }
+    } else {
+        // It's a user
+        Client* targetClient = _server.getClientByNickname(target);
+        if (targetClient) {
+            sendReply(clientFd, "352 " + requestingClient->getNickname() + " * " + 
+                      targetClient->getUsername() + " " + targetClient->getHostname() + " " + 
+                      _server.getServerName() + " " + targetClient->getNickname() + 
+                      " H :0 " + targetClient->getRealname());
+        }
+    }
+
+    // End of WHO list
+    sendReply(clientFd, "315 " + requestingClient->getNickname() + " " + target + " :End of /WHO list");
+}

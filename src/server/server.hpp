@@ -7,6 +7,7 @@
 #include "./channel/channel.hpp"
 #include "./command/commandParser.hpp"
 #include "./command/commandExecutor.hpp"
+#include "../utils/server_utils.hpp"
 #include <string>
 #include <map>
 #include <vector>
@@ -59,7 +60,7 @@ public:
     Client* getClientByFd(int fd);
     Channel* getOrCreateChannel(const std::string& channelName, int clientFd);
     Channel* getChannel(const std::string& channelName);
-    void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = nullptr);
+    void broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient = NULL);
     bool canJoinMoreChannels(const Client* client) const;
     int getMaxChannelsPerClient() const;
     std::string generateUniqueId() const;

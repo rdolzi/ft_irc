@@ -53,7 +53,7 @@ Server::Server(int port, const std::string& password)
 
     _cmdExecutor = new CommandExecutor(*this);
 
-    Logger::info("Server initialized on port " + std::to_string(_port));
+    Logger::info("Server initialized on port " + to_string(_port));
 }
 
 
@@ -120,7 +120,7 @@ void Server::_acceptNewConnection() {
     newClient->setHostname(clientIP);
     _clients[clientSocket] = newClient;
 
-    Logger::debug("New client created with fd: " + std::to_string(clientSocket) + 
+    Logger::debug("New client created with fd: " + to_string(clientSocket) + 
               ", password set: " + (newClient->isPasswordSet() ? "true" : "false"));
               
     pollfd clientPollFd = {clientSocket, POLLIN, 0};
@@ -136,9 +136,9 @@ void Server::_acceptNewConnection() {
 //     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
 //     if (bytesRead <= 0) {
 //         if (bytesRead == 0) {
-//             Logger::info("Client disconnected: " + std::to_string(clientFd));
+//             Logger::info("Client disconnected: " + to_string(clientFd));
 //         } else {
-//             Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+//             Logger::error("Error reading from client " + to_string(clientFd) + ": " + std::string(strerror(errno)));
 //         }
 //         _removeClient(clientFd);
 //         return;
@@ -163,20 +163,20 @@ void Server::_acceptNewConnection() {
         
 //         // Check if the message (including \r\n) exceeds 512 bytes
 //         if (cmd.length() + 2 > 512) {
-//             Logger::warning("Received message too long from client " + std::to_string(clientFd));
+//             Logger::warning("Received message too long from client " + to_string(clientFd));
 //             sendToClient(clientFd, ":" + getServerName() + " " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
 //             continue;
 //         }
 
 
 //         if (!cmd.empty()) {
-//             Logger::debug("Received command from client " + std::to_string(clientFd) + ": " + cmd);
+//             Logger::debug("Received command from client " + to_string(clientFd) + ": " + cmd);
 //             Command parsedCmd = CommandParser::parse(cmd);
 //             if (parsedCmd.isValid()) {
 //                 Logger::info("Parsed command: " + parsedCmd.toString());
 //                 _cmdExecutor->executeCommand(clientFd, parsedCmd);
 //             } else {
-//                 Logger::warning("Invalid command received from client " + std::to_string(clientFd));
+//                 Logger::warning("Invalid command received from client " + to_string(clientFd));
 //                 sendToClient(clientFd, ":" + getServerName() + " [421] " + getClientByFd(clientFd)->getFullClientIdentifier() + " " + parsedCmd.getCommand() + " :Unknown command\r\n");
 //             }
 //         }
@@ -184,7 +184,7 @@ void Server::_acceptNewConnection() {
 
 //     // Check if the remaining buffer exceeds the maximum length
 //     if (clientBuffer.length() >= 510) {  // 510 to allow for potential \r\n
-//         Logger::warning("Client " + std::to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
+//         Logger::warning("Client " + to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
 //         sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
 //         clientBuffer.clear();
 //     }
@@ -197,14 +197,17 @@ void Server::_handleClientMessage(int clientFd) {
     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
     if (bytesRead <= 0) {
         if (bytesRead == 0) {
-            Logger::info("Client disconnected: " + std::to_string(clientFd));
+            Logger::info("Client disconnected: " + to_string(clientFd));
         } else {
-            Logger::error("Error reading from client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+            Logger::error("Error reading from client " + to_string(clientFd) + ": " + std::string(strerror(errno)));
         }
         _removeClient(clientFd);
         return;
     }
 
+        if (bytesRead > 0 && buffer[bytesRead - 1] == '\n'  && buffer[bytesRead - 2] == '\r') {
+        bytesRead--;
+    }
     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
     std::string& clientBuffer = _clients[clientFd]->getBuffer();
     Logger::info("CLIENT BUFFER: " + clientBuffer);
@@ -216,19 +219,19 @@ void Server::_handleClientMessage(int clientFd) {
 
         // Check if the message (including \r\n) exceeds 512 bytes
         if (cmd.length() + 2 > 512) {
-            Logger::warning("Received message too long from client " + std::to_string(clientFd));
+            Logger::warning("Received message too long from client " + to_string(clientFd));
             sendToClient(clientFd, ":" + getServerName() + " " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
             continue;
         }
 
         if (!cmd.empty()) {
-            Logger::debug("Received command from client " + std::to_string(clientFd) + ": " + cmd);
+            Logger::debug("Received command from client " + to_string(clientFd) + ": " + cmd);
             Command parsedCmd = CommandParser::parse(cmd);
             if (parsedCmd.isValid()) {
                 Logger::info("Parsed command: " + parsedCmd.toString());
                 _cmdExecutor->executeCommand(clientFd, parsedCmd);
             } else {
-                Logger::warning("Invalid command received from client " + std::to_string(clientFd));
+                Logger::warning("Invalid command received from client " + to_string(clientFd));
                 sendToClient(clientFd, ":" + getServerName() + " [421] " + getClientByFd(clientFd)->getFullClientIdentifier() + " " + parsedCmd.getCommand() + " :Unknown command\r\n");
             }
         }
@@ -236,7 +239,7 @@ void Server::_handleClientMessage(int clientFd) {
 
     // Check if the remaining buffer exceeds the maximum length
     if (clientBuffer.length() >= 510) { // 510 to allow for potential \r\n
-        Logger::warning("Client " + std::to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
+        Logger::warning("Client " + to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
         sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
         clientBuffer.clear();
     }
@@ -244,7 +247,7 @@ void Server::_handleClientMessage(int clientFd) {
 
 //enhanced version: added Logger
 void Server::_removeClient(int clientFd) {
-    Logger::info("Removing client: " + std::to_string(clientFd));
+    Logger::info("Removing client: " + to_string(clientFd));
     delete _clients[clientFd];
     _clients.erase(clientFd);
     close(clientFd);
@@ -276,11 +279,11 @@ void Server::sendToClient(int clientFd, const std::string& message) {
 
     ssize_t bytesSent = send(clientFd, message.c_str(), message.length(), 0);
     if (bytesSent == -1) {
-        Logger::error("Failed to send message to client " + std::to_string(clientFd) + ": " + std::string(strerror(errno)));
+        Logger::error("Failed to send message to client " + to_string(clientFd) + ": " + std::string(strerror(errno)));
     } else if (static_cast<size_t>(bytesSent) < message.length()) {
-        Logger::warning("Incomplete message sent to client " + std::to_string(clientFd));
+        Logger::warning("Incomplete message sent to client " + to_string(clientFd));
     } else {
-        Logger::debug("Successfully sent " + std::to_string(bytesSent) + " bytes to client " + std::to_string(clientFd));
+        Logger::debug("Successfully sent " + to_string(bytesSent) + " bytes to client " + to_string(clientFd));
     }
 }
 
