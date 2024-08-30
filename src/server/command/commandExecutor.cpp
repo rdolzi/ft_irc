@@ -162,7 +162,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     std::string username = cmd.getParameters()[0];
     //std::string realname = cmd.getParameters()[3];
     std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);
-    Logger::debug(":::::" + realname);
+    Logger::debug(":::::" + realname + " >>>>" + cmd.getParameters()[3]);
 
     client->setUsername(username);
     client->setRealname(realname);
@@ -277,7 +277,10 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     std::string target = cmd.getParameters()[0];
     std::string message = cmd.getParameters()[1];
     Client* sender = _server.getClientByFd(clientFd);
-
+    if (!sender) {
+            Logger::error("Client not found for fd: " + to_string(clientFd));
+            return;
+        }
     
     if (isChannelSyntaxOk(target)) {
         // Check if the channel name is valid
@@ -287,19 +290,27 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
         return;
         }
         Channel *channel = _server.getChannel(target);
-        if (!channel->isMember(sender)){
+        if (!channel && !channel->isMember(sender)){
             sendReply(clientFd, "[404] " + target + " ::Cannot send to channel");
          Logger::debug("Client in not a member of channel.Sent [404] ':Cannot send to channel'");
         }
         Logger::info("client is sending message to channel...");
-        std::string prefix = channel->isOperator(sender) ? "@" : "";
-        std::string channelMessage =  ":" + sender->getNickname() + " PRIVMSG " + prefix + target + " :" + message;
+
+        std::string channelMessage =  sender->getNickname() + " PRIVMSG " + target + " :" + message + "\r\n";
         _server.broadcastToChannel(target, channelMessage);
     } else {
         Client* recipient = _server.getClientByNickname(target);
-        Logger::info("targer: "+target + "| client: "+ recipient->getNickname());
-        if (recipient) {
-            sendReply(recipient->getFd(), ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message);
+       if (!recipient) {
+           Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
+           return;
+       }
+       Logger::info("targer: "+target + "| client: "+ recipient->getNickname());
+       if (recipient) {
+            sendReply(recipient->getFd(),sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message);
+       }
+        Logger::info("targer: "+target + "| client: "+ sender->getNickname());
+        if (sender) {
+            sendReply(sender->getFd(), sender->getNickname() + " PRIVMSG " + target + " :" + message);
         } else { 
             sendReply(clientFd, "[401] " + sender->getNickname() + " " + target + " :No such nick/channel");
         }
