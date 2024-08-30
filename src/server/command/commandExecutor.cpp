@@ -176,7 +176,154 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     }
 }
 
+void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
+    if (cmd.getParameters().empty()) {
+        sendReply(clientFd, "461 JOIN :Not enough parameters");
+        Logger::debug("Sent [461] 'Not enough parameters' reply");
+        return;
+    }
 
+    std::string channelName = cmd.getParameters()[0];
+    std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
+    Client* client = _server.getClientByFd(clientFd);
+
+    if (!client) {
+        Logger::error("Client not found for fd: " + to_string(clientFd));
+        return;
+    }
+
+    // Check if the channel name is valid
+    if (!isValidChannelName(channelName)) {
+        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
+        return;
+    }
+
+    // Perform other checks (e.g., invite-only, key, user limit)
+    // ...
+
+    Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
+    if (!channel) {
+        sendReply(clientFd, "403 " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
+        return;
+    }
+
+    // Add the client as a member of the channel before broadcasting the join message
+    if (!channel->addMember(client, key)) {
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
+    }
+
+    // Broadcast the join message to all members of the channel
+    std::string joinMessage = ":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n";
+    _server.broadcastToChannel(channelName, joinMessage);
+
+    // Send channel topic (numeric 331 or 332)
+    if (channel->getTopic().empty()) {
+        sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set");
+    } else {
+        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + channel->getTopic());
+    }
+
+    // Send names list (numeric 353 and 366)
+    std::string namesList = channel->getNames();
+    sendReply(clientFd, "353 " + client->getNickname() + " = " + channelName + " :" + namesList);
+    sendReply(clientFd, "366 " + client->getNickname() + " " + channelName + " :End of /NAMES list");
+}
+
+
+/*
+void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
+    if (cmd.getParameters().empty()) {
+        sendReply(clientFd, "[461] JOIN :Not enough parameters");
+        Logger::debug("Sent [461] 'Not enough parameters' reply");
+        return;
+    }
+
+    std::string channelName = cmd.getParameters()[0];
+    std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
+    Client* client = _server.getClientByFd(clientFd);
+
+    if (!client) {
+        Logger::error("Client not found for fd: " + to_string(clientFd));
+        return;
+    }
+
+    // Check if the channel name is valid
+    if (!isValidChannelName(channelName)) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
+        return;
+    }
+
+    // Check if the client has reached the channel join limit
+    if (!_server.canJoinMoreChannels(client)) {
+        sendReply(clientFd, "[405] " + channelName + " :You have joined too many channels");
+        return;
+    }
+
+    // Get or create the channel
+    Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
+    if (!channel) {
+        sendReply(clientFd, "[403] " + channelName + " :No such channel");
+        Logger::debug("Sent [403] 'No such channel' reply");
+        return;
+    }
+
+    // Check invite-only status
+    if (channel->isInviteOnly() && !channel->isInvited(client)) {
+        sendReply(clientFd, "[473] " + channelName + " :Cannot join channel (+i)");
+        Logger::debug("Sent [473] 'Cannot join channel (+i)'");
+        return;
+    }
+
+    // Check channel key
+    if (!channel->checkKey(key)) {
+        sendReply(clientFd, "[475] " + channelName + " :Cannot join channel (+k)");
+        Logger::debug("Sent [475] 'Cannot join channel (+k)'");
+        return;
+    }
+
+    // Check user limit
+    if (channel->isFull()) {
+        sendReply(clientFd, "[471] " + channelName + " :Cannot join channel (+l)");
+        Logger::debug("Sent [471] 'Cannot join channel (+l)'");
+        return;
+    }
+
+    // Add the client as a member of the channel before broadcasting the join message
+    if (!channel->addMember(client, key)) {
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
+    }
+
+    // If the channel is empty, make the joining client an operator
+    if (channel->getMembers().size() == 1) {
+        Logger::info("Channel size is 1 (was empty), client is now the operator!");
+        channel->addOperator(client); 
+    }
+
+    // Broadcast the join message to all members of the channel
+    std::string joinMessage = ":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n";
+    _server.broadcastToChannel(channelName, joinMessage);
+
+    // Send channel topic
+    std::string topic = channel->getTopic();
+    if (!topic.empty()) {
+        sendReply(clientFd, ":" + _server.getServerName() + " 332 " + client->getNickname() + " " + channelName + " :" + topic + "\r\n");
+    } else {
+        sendReply(clientFd, ":" + _server.getServerName() + " 331 " + client->getNickname() + " " + channelName + " :No topic is set\r\n");
+    }
+
+    // Send names list
+    std::string names = channel->getNames();
+    sendReply(clientFd, ":" + _server.getServerName() + " 353 " + client->getNickname() + " = " + channelName + " :" + names + "\r\n");
+    sendReply(clientFd, ":" + _server.getServerName() + " 366 " + client->getNickname() + " " + channelName + " :End of /NAMES list\r\n");
+}*/
+
+
+/*
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
         sendReply(clientFd, "[461] JOIN :Not enough parameters");
@@ -265,9 +412,72 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     sendReply(clientFd, "[353] " + client->getNickname() + " = " + channelName + " :" + names);
     sendReply(clientFd, "[366] " + client->getNickname() + " " + channelName + " :End of /NAMES list");
     
+}*/
+
+void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
+    // Check if the PRIVMSG command has at least two parameters: the target and the message
+    if (cmd.getParameters().size() < 2) {
+        sendReply(clientFd, "[411] :No recipient given (PRIVMSG)");
+        return;
+    }
+
+    std::string target = cmd.getParameters()[0];
+    std::string message = cmd.getParameters()[1];
+    Client* sender = _server.getClientByFd(clientFd);
+    
+    // Check if the sender exists (shouldn't be null)
+    if (!sender) {
+        Logger::error("Client not found for fd: " + to_string(clientFd));
+        return;
+    }
+
+    // Check if the target is a channel
+    if (isChannelSyntaxOk(target)) {
+        // Validate the channel name
+        if (!isValidChannelName(target)) {
+            sendReply(clientFd, "[403] " + target + " :No such channel");
+            Logger::debug("Sent [403] 'No such channel' reply");
+            return;
+        }
+
+        Channel* channel = _server.getChannel(target);
+        
+        // Check if the channel exists and the sender is a member of the channel
+        if (!channel || !channel->isMember(sender)) {
+            sendReply(clientFd, "[404] " + target + " ::Cannot send to channel");
+            Logger::debug("Client is not a member of the channel. Sent [404] ':Cannot send to channel'");
+            return;
+        }
+
+        Logger::info("Client is sending a message to the channel...");
+
+        // Construct the channel message in the proper IRC format
+        std::string channelMessage = ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message + "\r\n";
+        _server.broadcastToChannel(target, channelMessage);
+
+    } else {
+        // Handle private messages to a specific user
+        Client* recipient = _server.getClientByNickname(target);
+        
+        // Check if the recipient exists
+        if (!recipient) {
+            Logger::error("Recipient client not found for nickname: " + target);
+            sendReply(clientFd, "[401] " + target + " :No such nick/channel");
+            return;
+        }
+
+        Logger::info("Target: " + target + " | Recipient: " + recipient->getNickname());
+
+        // Construct the private message in the proper IRC format
+        std::string privateMessage = ":" + sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message + "\r\n";
+        sendReply(recipient->getFd(), privateMessage);
+
+        Logger::info("Message sent to recipient: " + recipient->getNickname());
+    }
 }
 
 
+/*
 void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     if (cmd.getParameters().size() < 2) {
         sendReply(clientFd, "[411] :No recipient given (PRIVMSG)");
@@ -290,9 +500,9 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
         return;
         }
         Channel *channel = _server.getChannel(target);
-        if (!channel && !channel->isMember(sender)){
+        if (!channel || !channel->isMember(sender)){
             sendReply(clientFd, "[404] " + target + " ::Cannot send to channel");
-         Logger::debug("Client in not a member of channel.Sent [404] ':Cannot send to channel'");
+         Logger::debug("Client is not a member of channel.Sent [404] ':Cannot send to channel'");
         }
         Logger::info("client is sending message to channel...");
 
@@ -304,7 +514,7 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
            Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
            return;
        }
-       Logger::info("targer: "+target + "| client: "+ recipient->getNickname());
+       Logger::info("target: "+target + "| client: "+ recipient->getNickname());
        if (recipient) {
             sendReply(recipient->getFd(),sender->getFullClientIdentifier() + " PRIVMSG " + target + " :" + message);
        }
@@ -315,7 +525,7 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
             sendReply(clientFd, "[401] " + sender->getNickname() + " " + target + " :No such nick/channel");
         }
     }
-}
+}*/
 
 
 /*
@@ -347,6 +557,14 @@ bool CommandExecutor::isValidNickname(const std::string& nickname) const {
 bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && (client->getNickname() != "") && client->isUserSet();
 }
+
+/*
+void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
+    std::string formattedReply = reply + "\r\n";  // No server name prepended
+    Logger::debug("Sending reply to client " + std::to_string(clientFd) + ": " + formattedReply);
+    _server.sendToClient(clientFd, formattedReply);
+}*/
+
 
 void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
     std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
