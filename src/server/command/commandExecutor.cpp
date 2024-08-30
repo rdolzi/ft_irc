@@ -293,7 +293,7 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
         }
         Logger::info("client is sending message to channel...");
         std::string prefix = channel->isOperator(sender) ? "@" : "";
-        std::string channelMessage =  ":" + sender->getFullClientIdentifier() + " PRIVMSG " + prefix + target + " :" + message;
+        std::string channelMessage =  ":" + sender->getNickname() + " PRIVMSG " + prefix + target + " :" + message;
         _server.broadcastToChannel(target, channelMessage);
     } else {
         Client* recipient = _server.getClientByNickname(target);
