@@ -60,6 +60,8 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         executeMode(clientFd, cmd);
     } else if (command == "TOPIC") {
         executeTopic(clientFd, cmd);
+    } else if (command == "WHO") {
+        executeWho(clientFd, cmd);
     } else if (command == "INVITE") {
         executeInvite(clientFd, cmd);
     } else if (command == "KICK") {
@@ -160,7 +162,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     std::string username = cmd.getParameters()[0];
     //std::string realname = cmd.getParameters()[3];
     std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);
-
+    Logger::debug(":::::" + realname);
 
     client->setUsername(username);
     client->setRealname(realname);
@@ -345,11 +347,21 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
     Logger::info("A");
 
+    if (cmd.getParameters().size() == 1) {
+        sendReply(clientFd, "[368] MODE "+cmd.getParameters()[0]);
+        return;
+    }
 
-    if (cmd.getParameters().size() < 2 || cmd.getParameters().size() > 3) {
+    if (cmd.getParameters().size() == 2 &&  cmd.getParameters()[1] == "b") {
+        sendReply(clientFd, "[368] MODE "+cmd.getParameters()[0]+" :End of channel ban list");
+        return;
+    }
+
+    if (cmd.getParameters().size() > 3) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;
     }
+
     Logger::info("1");
     std::string channel = cmd.getParameters()[0];
     std::string modestring = cmd.getParameters()[1];
@@ -809,7 +821,7 @@ void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
                 if (channel->isOperator(member)) {
                     flags += "@";
                 }
-                
+                Logger::info(">>>>>>>>>>>>> REAL NAME IS:"+requestingClient->getRealname());
                 sendReply(clientFd, "352 " + requestingClient->getNickname() + " " + 
                           target + " " + member->getUsername() + " " + 
                           member->getHostname() + " " + _server.getServerName() + " " + 
