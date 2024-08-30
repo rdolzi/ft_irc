@@ -205,9 +205,11 @@ void Server::_handleClientMessage(int clientFd) {
         return;
     }
 
-        if (bytesRead > 0 && buffer[bytesRead - 1] == '\n'  && buffer[bytesRead - 2] == '\r') {
+    if (bytesRead > 0 && buffer[bytesRead - 1] == '\n'  && buffer[bytesRead - 2] != '\r') {
         bytesRead--;
     }
+
+
     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
     std::string& clientBuffer = _clients[clientFd]->getBuffer();
     Logger::info("CLIENT BUFFER: " + clientBuffer);

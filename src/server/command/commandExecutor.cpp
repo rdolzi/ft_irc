@@ -519,11 +519,21 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                     break;
                 case 'l': // User limit
                     if (adding && argIndex < args.size()) {
-                        channel->setUserLimit(std::stoi(args[argIndex]));
-                        modeChanges += mode;
-                        modeArgs += " " + args[argIndex];
-                        paramModeCount++;
-                    } else if (!adding) {
+                        int userLimit;
+                        std::stringstream ss(args[argIndex]);
+                        ss >> userLimit;
+
+                        if (ss.fail() || !ss.eof()) {
+                            // Handle the error (e.g., invalid integer conversion)
+                            // This could be logging the error or setting a default value
+                        } else {
+                            channel->setUserLimit(userLimit);
+                            modeChanges += mode;
+                            modeArgs += " " + args[argIndex];
+                            paramModeCount++;
+                        }
+                    }
+                    else if (!adding) {
                         channel->removeUserLimit();
                         modeChanges += mode;
                     }
