@@ -48,10 +48,6 @@ void Channel::removeMember(Client* client) {
 }
 
 void Channel::addOperator(Client* client) {
-    // if (!isOperator(client) && isMember(client)) {
-    //     _operators.push_back(client);
-    // }
-    Logger::info("AGGIUNTO OPERATORE!!!!!!!!!");
     _operators.push_back(client);
 }
 
@@ -107,7 +103,6 @@ bool Channel::addMember(Client* client, const std::string& key) {
     }
     
     if (!isMember(client)) {
-        Logger::info(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>OOOOK");
         _members.push_back(client);
         _invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), client), _invitedClients.end());
         return true;

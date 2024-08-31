@@ -92,7 +92,6 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     }
 
     std::string password = cmd.getParameters()[0];
-    Logger::info("Param[0]: "+ password + " actual psw: " +_server.getPassword());
     if (password == _server.getPassword()) {
         client->setPassword(true);
         //sendReply(clientFd, ":Password accepted");
@@ -162,7 +161,6 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     std::string username = cmd.getParameters()[0];
     //std::string realname = cmd.getParameters()[3];
     std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);
-    Logger::debug(":::::" + realname + " >>>>" + cmd.getParameters()[3]);
 
     client->setUsername(username);
     client->setRealname(realname);
@@ -574,8 +572,6 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 
 
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
-    Logger::info("A");
-
     if (cmd.getParameters().size() == 1) {
         sendReply(clientFd, "[368] MODE "+cmd.getParameters()[0]);
         return;
@@ -590,8 +586,6 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
         sendReply(clientFd, "[461] MODE :Not enough parameters");
         return;
     }
-
-    Logger::info("1");
     std::string channel = cmd.getParameters()[0];
     std::string modestring = cmd.getParameters()[1];
 
@@ -600,10 +594,6 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
         Logger::info("Parameter " + to_string(i) + ": '" + cmd.getParameters()[i] + "'");
         args.push_back(cmd.getParameters()[i]);
     }
-    Logger::info("2");
-    // std::vector<std::string> args(cmd.getParameters().begin() + 2, cmd.getParameters().end());
-    Logger::info("3");
-    Logger::info("B");
     // Check if the channel name is valid
     if (!isValidChannelName(channel)) {
         sendReply(clientFd, "[476] " + channel + " :Bad Channel Mask");
@@ -670,7 +660,6 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         sendReply(clientFd, "[403] " + channelName + " :No such channel");
         return;
     }
-    Logger::info("C");
     // 2. Initialize variables for processing modes
     Client* client = _server.getClientByFd(clientFd);
 
@@ -689,10 +678,8 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         sendReply(clientFd, "[481] "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges");
         return;
     }
-    Logger::info("D");
     // 3. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
-        Logger::info("In for loop, i: "+to_string(i));
         char mode = modestring[i];
         if (mode == '+') {
             adding = true;
@@ -703,7 +690,6 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
             modeChanges += "-";
             argIndex++;
         } else {
-            Logger::info("F");
             bool requiresParam = (mode == 'k' || mode == 'o' || mode == 'l');
             if (requiresParam && paramModeCount >= 3) {
                 break;  // Max 3 parameter modes per command
@@ -735,15 +721,12 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                     }
                     break;
                 case 'o':
-                    Logger::info("G");
-                    Logger::info("In case o");
                     if (args.size() == 3) {
                         Client* targetClient = _server.getClientByNickname(args[2]);
                         if (!targetClient) {
                             Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
                             return;
                         }
-                        Logger::info("H");
                         Logger::info("targetClient: "+ targetClient->getNickname());
                         if (targetClient) {
                             if (adding) {
@@ -808,7 +791,6 @@ void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
     // dal index 1
     std::string channelName = cmd.getParameters()[0];
     Channel* channel = _server.getChannel(channelName);
-    Logger::info(">>>>>> "+ channelName);
     if (!channel) {
         return;
     }
@@ -1050,7 +1032,6 @@ void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
                 if (channel->isOperator(member)) {
                     flags += "@";
                 }
-                Logger::info(">>>>>>>>>>>>> REAL NAME IS:"+requestingClient->getRealname());
                 sendReply(clientFd, "352 " + requestingClient->getNickname() + " " + 
                           target + " " + member->getUsername() + " " + 
                           member->getHostname() + " " + _server.getServerName() + " " + 
