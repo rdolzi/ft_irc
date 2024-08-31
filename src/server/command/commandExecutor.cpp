@@ -565,7 +565,8 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
 
 
 void CommandExecutor::sendReply(int clientFd, const std::string& reply) const {
-    std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
+    // std::string formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
+    std::string formattedReply = reply + "\r\n";
     Logger::debug("Sending reply to client " + to_string(clientFd) + ": " + formattedReply);
     _server.sendToClient(clientFd, formattedReply);
 }
