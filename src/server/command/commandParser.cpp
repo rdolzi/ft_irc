@@ -116,7 +116,9 @@ std::vector<std::string> CommandParser::extractParameters(std::string& message) 
         if (param[0] == ':') {
             std::string trailing;
             std::getline(iss, trailing);
-            param = param.substr(1) + trailing;
+            Logger::debug("BEFORE>> Extracted trailing parameter: '" + param + "'");
+            //param = param + trailing;
+             param = param.substr(1) + trailing;
             parameters.push_back(param);
             Logger::debug("Extracted trailing parameter: '" + param + "'");
             break;

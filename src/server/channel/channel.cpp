@@ -1,4 +1,5 @@
 #include "channel.hpp"
+#include "../../utils/server_utils.hpp"
 #include <algorithm>
 
 
@@ -68,10 +69,12 @@ bool Channel::isInvited(Client* client) const {
 }
 
 bool Channel::checkKey(const std::string& key) const {
+    Logger::info("KEY: "+ key + "_KEY: " + _key);
     return _key.empty() || key == _key;
 }
 
 bool Channel::isFull() const {
+    Logger::info("_members.size(): "+ to_string(_members.size()));
     return _userLimit > 0 && _members.size() >= static_cast<size_t>(_userLimit);
 }
 
@@ -94,7 +97,14 @@ void Channel::inviteClient(Client* client) {
 
 // Update addMember to remove the client from the invited list if they join
 bool Channel::addMember(Client* client, const std::string& key) {
-    if (isFull() || !checkKey(key)) {
+
+    if (isFull()) {
+        Logger::info("FAIL addmember: IS FULL!");
+        return false;
+    }
+
+    if (!checkKey(key)) {
+        Logger::info("FAIL addmember: checkKey!");
         return false;
     }
     
@@ -119,7 +129,7 @@ void Channel::setTopicRestricted(bool restricted) {
 }
 
 void Channel::removeKey() {
-    _key.clear();
+    _key = "";
 }
 
 

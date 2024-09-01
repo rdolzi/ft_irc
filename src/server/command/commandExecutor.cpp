@@ -161,6 +161,13 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
         return;
     }
 
+/*
+    if (cmd.getParameters().size() > 3  && cmd.getParameters()[3][0] != ':') {
+        sendReply(clientFd, "461 USER :Wrong syntax", true);
+        Logger::debug("Sent [461] 'not enough parameters' reply");
+        return;
+    }
+*/
     std::string username = cmd.getParameters()[0];
     //std::string realname = cmd.getParameters()[3];
     std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);
@@ -187,6 +194,11 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     std::string channelName = cmd.getParameters()[0];
     std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
     Client* client = _server.getClientByFd(clientFd);
+
+    if(cmd.getParameters().size() > 1){
+    Logger::debug("CHANNEL KEY: " + key);
+    }
+    
 
     if (!client) {
         Logger::error("Client not found for fd: " + to_string(clientFd));
@@ -719,7 +731,7 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                     break;
                 case 'k': // Channel key (password)
                     if (adding && argIndex < args.size()) {
-                        channel->setKey(args[argIndex]);
+                        channel->setKey(args[argIndex + 1]);
                         modeChanges += mode;
                         modeArgs += " " + args[argIndex];
                         argIndex++;
@@ -753,15 +765,17 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                     }
                     break;
                 case 'l': // User limit
+                Logger::info("In mode (l)");
                     if (adding && argIndex < args.size()) {
+                        Logger::info("Inside if mode (l)");
                         int userLimit;
-                        std::stringstream ss(args[argIndex]);
+                        std::stringstream ss(args[argIndex + 1]);
                         ss >> userLimit;
 
                         if (ss.fail() || !ss.eof()) {
-                            // Handle the error (e.g., invalid integer conversion)
-                            // This could be logging the error or setting a default value
+                            Logger::error("Error while executing MODE (l)");
                         } else {
+                            Logger::info("In mode (l)");
                             channel->setUserLimit(userLimit);
                             modeChanges += mode;
                             modeArgs += " " + args[argIndex];
