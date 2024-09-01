@@ -1069,5 +1069,51 @@ void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
     sendReply(clientFd, "315 " + requestingClient->getNickname() + " " + target + " :End of /WHO list", true);
 }
 
+void CommandExecutor::executeNotice(int clientFd, const Command& cmd) {
+    if (cmd.getParameters().size() < 2) {
+        // Do nothing; NOTICE should not generate error replies
+        return;
+    }
 
+    std::string target = cmd.getParameters()[0];
+    std::string message = cmd.getParameters()[1];
+    Client* sender = _server.getClientByFd(clientFd);
+    
+    if (!sender) {
+        Logger::error("Client not found for fd: " + to_string(clientFd));
+        return;
+    }
 
+    // Check if the target is a channel
+    if (isChannelSyntaxOk(target)) {
+        Channel* channel = _server.getChannel(target);
+
+        if (!channel || !channel->isMember(sender)) {
+            // Do nothing; NOTICE should not generate error replies
+            return;
+        }
+
+        Logger::info("Client is sending a notice to the channel...");
+
+        // Construct the channel notice in the proper IRC format
+        std::string channelNotice = ":" + sender->getFullClientIdentifier() + " NOTICE " + target + " :" + message + "\r\n";
+        _server.broadcastToChannel(target, channelNotice, sender);
+
+    } else {
+        // Handle notices to a specific user
+        Client* recipient = _server.getClientByNickname(target);
+        
+        if (!recipient) {
+            // Do nothing; NOTICE should not generate error replies
+            return;
+        }
+
+        Logger::info("Target: " + target + " | Recipient: " + recipient->getNickname());
+
+        // Construct the private notice in the proper IRC format
+        std::string privateNotice = ":" + sender->getFullClientIdentifier() + " NOTICE " + target + " :" + message + "\r\n";
+        sendReply(recipient->getFd(), privateNotice, false);
+
+        Logger::info("Notice sent to recipient: " + recipient->getNickname());
+    }
+}
