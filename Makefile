@@ -38,7 +38,7 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@mkdir -p $(@D)
 	@$(CXX) $(FLAGS) $(INCLUDE) -c $< -o $@
 	@$(eval SRC_COUNT = $(shell expr $(SRC_COUNT) + 1))
-	@printf "\r$(BOLD)$(GREEN)[%d/%d] 😊(%d%%)$(END)$(BOLD)$(BLUE)%-40s" $(SRC_COUNT) $(SRC_COUNT_TOT) $(shell expr 100 \* $(SRC_COUNT) / $(SRC_COUNT_TOT)) $<
+	@printf "\r$(BOLD)$(GREEN)[%d/%d] ⏳(%d%%)$(END)$(BOLD)$(BLUE)%-40s" $(SRC_COUNT) $(SRC_COUNT_TOT) $(shell expr 100 \* $(SRC_COUNT) / $(SRC_COUNT_TOT)) $<
 
 
 # Main target
@@ -55,6 +55,7 @@ $(NAME): $(OBJS)
 	@printf " |_____|_|  \\_\\\\_____| \n"
 	@printf "                          \n"
 	@printf " Internet Relay Chat         $(RESET)\n"
+	@printf " $(UNDER)$(BOLD)$(GREEN)Made by:\n$(RESET) 	   $(UNDER)$(BOLD)$(GREEN)Fcardina and Rdolzi\n$(RESET)"
 	@printf "\n"
 	@printf "$(UNDER)$(BOLD)$(CYAN)Usage: ./$(NAME) <port> <password>$(RESET)\n"
 
