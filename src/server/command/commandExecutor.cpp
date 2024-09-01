@@ -138,7 +138,7 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
         Logger::debug("Nickname set for the first time: " + newNick);
         sendReply(clientFd, "001 " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier(), true);
         Logger::debug("[001] Registration complete, sent welcome message");
-    } else {
+    } else { // TODO: Da verificare se sia da lasciare o togliere
         _server.broadcast(":" + oldClientIdentifier + " NICK " + newNick + "\r\n", clientFd);
         Logger::debug("Nickname changed from " + oldNick + " to " + newNick);
     }
@@ -161,13 +161,13 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
         return;
     }
 
-/*
+
     if (cmd.getParameters().size() > 3  && cmd.getParameters()[3][0] != ':') {
         sendReply(clientFd, "461 USER :Wrong syntax", true);
         Logger::debug("Sent [461] 'not enough parameters' reply");
         return;
     }
-*/
+
     std::string username = cmd.getParameters()[0];
     //std::string realname = cmd.getParameters()[3];
     std::string realname = (cmd.getParameters()[3][0] == ':' ? cmd.getParameters()[3].substr(1) : cmd.getParameters()[3]);

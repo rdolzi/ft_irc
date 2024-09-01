@@ -106,25 +106,30 @@ std::string CommandParser::extractCommand(std::string& message) {
     Logger::debug("Extracted command: '" + command + "'");
     return command;
 }
-
+// TODO: fare test generico
 std::vector<std::string> CommandParser::extractParameters(std::string& message) {
     std::vector<std::string> parameters;
     std::string param;
     std::istringstream iss(message);
+    int flag = 0;
 
     while (iss >> param) {
         if (param[0] == ':') {
             std::string trailing;
             std::getline(iss, trailing);
             Logger::debug("BEFORE>> Extracted trailing parameter: '" + param + "'");
-            //param = param + trailing;
-             param = param.substr(1) + trailing;
+            if (flag != 0){
+              param = param + trailing;
+            } else {
+               param = param.substr(1) + trailing;
+            }
             parameters.push_back(param);
             Logger::debug("Extracted trailing parameter: '" + param + "'");
             break;
         }
         parameters.push_back(param);
         Logger::debug("Extracted parameter: '" + param + "'");
+        flag++;
     }
 
     return parameters;
