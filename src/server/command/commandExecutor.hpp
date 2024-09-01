@@ -31,7 +31,7 @@ private:
     // Helper methods
     bool isValidNickname(const std::string& nickname) const;
     bool isRegistered(const Client* client) const;
-    void sendReply(int clientFd, const std::string& reply) const;
+    void sendReply(int clientFd, const std::string& reply, bool flag) const;
     void handleChannelMode(int clientFd, const std::string& channelName, const std::string& modestring, const std::vector<std::string>& args);
      bool isValidChannelName(const std::string& channelName);
 

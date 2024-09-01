@@ -394,6 +394,7 @@ Channel* Server::getChannel(const std::string& channelName) {
     return NULL;
 }
 
+/*
 void Server::broadcastToChannel(const std::string& channelName, const std::string& message) {
     Channel* channel = getChannel(channelName);
     Logger::info("sending message to all clients in channel");
@@ -403,6 +404,19 @@ void Server::broadcastToChannel(const std::string& channelName, const std::strin
         for (std::vector<Client*>::iterator it = members.begin(); it != members.end(); ++it) {
              Logger::info("client: "+ (*it)->getNickname());
                 sendToClient((*it)->getFd(), message);
+        }
+    }
+}
+*/
+
+void Server::broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient) {
+    Channel* channel = getChannel(channelName);
+    if (channel) {
+        std::vector<Client*> members = channel->getMembers();
+        for (std::vector<Client*>::iterator it = members.begin(); it != members.end(); ++it) {
+            if (*it != excludeClient) {
+                sendToClient((*it)->getFd(), message);
+            }
         }
     }
 }
