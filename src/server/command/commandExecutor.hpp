@@ -27,6 +27,7 @@ private:
     void executePing(int clientFd, const Command& cmd);
     void executeCap(int clientFd);
     void executeWho(int clientFd, const Command& cmd);
+    void executeNotice(int clientFd, const Command& cmd);
 
     // Helper methods
     bool isValidNickname(const std::string& nickname) const;

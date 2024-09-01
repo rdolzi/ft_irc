@@ -21,6 +21,7 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
         return;
     }
 
+
     if (command == "PING") {
         executePing(clientFd, cmd);
         return;
@@ -52,6 +53,8 @@ void CommandExecutor::executeCommand(int clientFd, const Command& cmd) {
        executeNick(clientFd, cmd);
     } else if (command == "USER") {
         executeUser(clientFd, cmd);
+    } else if (command == "NOTICE") {
+        executeNotice(clientFd, cmd);
     } else if (command == "JOIN") {
         executeJoin(clientFd, cmd);
     } else if (command == "PRIVMSG") {
@@ -206,7 +209,7 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
         Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
-
+    channelName = channel->getName();
     // Add the client as a member of the channel before broadcasting the join message
     if (!channel->addMember(client, key)) {
         Logger::error("Failed to add member to channel after all checks passed");
@@ -802,7 +805,7 @@ void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
     if (!channel) {
         return;
     }
-
+    channelName = channel->getName();
     if (!channel->isMember(client)) {
         sendReply(clientFd, "442 " + channelName + " :You're not on that channel", true);
         return;
@@ -1065,3 +1068,6 @@ void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
     // End of WHO list
     sendReply(clientFd, "315 " + requestingClient->getNickname() + " " + target + " :End of /WHO list", true);
 }
+
+
+
