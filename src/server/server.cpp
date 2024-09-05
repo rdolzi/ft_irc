@@ -1,6 +1,4 @@
-
 #include "server.hpp"
-
 
 
 Server::Server(int port, const std::string& password) 
@@ -128,69 +126,6 @@ void Server::_acceptNewConnection() {
 
     Logger::info("New client connected from " + clientIP);
 }
-
-
-
-// void Server::_handleClientMessage(int clientFd) {
-//     char buffer[1024];
-//     ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-//     if (bytesRead <= 0) {
-//         if (bytesRead == 0) {
-//             Logger::info("Client disconnected: " + to_string(clientFd));
-//         } else {
-//             Logger::error("Error reading from client " + to_string(clientFd) + ": " + std::string(strerror(errno)));
-//         }
-//         _removeClient(clientFd);
-//         return;
-//     }
-
-//     if (bytesRead > 0 && buffer[bytesRead - 1] == '\n') {
-//         bytesRead--;
-//     }
-
-//     //buffer[bytesRead] = '\0';
-//     _clients[clientFd]->appendToBuffer(std::string(buffer, bytesRead));
-
-//     std::string& clientBuffer = _clients[clientFd]->getBuffer();
-//     Logger::info("CLIENT BUFFER: " + clientBuffer);
-
-
-//     size_t pos;
-//     while ((pos = clientBuffer.find("\r\n")) != std::string::npos) {
-//         std::string cmd = clientBuffer.substr(0, pos);
-//         clientBuffer.erase(0, pos + 2); // Remove processed command and \r\n
-
-        
-//         // Check if the message (including \r\n) exceeds 512 bytes
-//         if (cmd.length() + 2 > 512) {
-//             Logger::warning("Received message too long from client " + to_string(clientFd));
-//             sendToClient(clientFd, ":" + getServerName() + " " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
-//             continue;
-//         }
-
-
-//         if (!cmd.empty()) {
-//             Logger::debug("Received command from client " + to_string(clientFd) + ": " + cmd);
-//             Command parsedCmd = CommandParser::parse(cmd);
-//             if (parsedCmd.isValid()) {
-//                 Logger::info("Parsed command: " + parsedCmd.toString());
-//                 _cmdExecutor->executeCommand(clientFd, parsedCmd);
-//             } else {
-//                 Logger::warning("Invalid command received from client " + to_string(clientFd));
-//                 sendToClient(clientFd, ":" + getServerName() + " [421] " + getClientByFd(clientFd)->getFullClientIdentifier() + " " + parsedCmd.getCommand() + " :Unknown command\r\n");
-//             }
-//         }
-//     }
-
-//     // Check if the remaining buffer exceeds the maximum length
-//     if (clientBuffer.length() >= 510) {  // 510 to allow for potential \r\n
-//         Logger::warning("Client " + to_string(clientFd) + " buffer exceeds maximum length of 512 bytes.");
-//         sendToClient(clientFd, ":" + getServerName() + " 417 " + getClientByFd(clientFd)->getFullClientIdentifier() + " :Input line was too long\r\n");
-//         clientBuffer.clear();
-//     }
-// }
-
-
 
 void Server::_handleClientMessage(int clientFd) {
     char buffer[1024];
@@ -336,18 +271,6 @@ std::string Server::_getIPAddress(const struct sockaddr_in& clientAddr) const {
     return std::string(ipStr);
 }
 
-// Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd) {
-//     std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
-//     if (it != _channels.end()) {
-//         return it->second;
-//     }
-//     Channel* newChannel = new Channel(channelName);
-//     _channels[channelName] = newChannel;
-//     Client * client = getClientByFd(clientFd);
-//     newChannel->addOperator(client);
-//     return newChannel;
-// }
-
 Channel* Server::getOrCreateChannel(const std::string& channelName, int clientFd) {
     // Check if the channel already exists
     std::map<std::string, Channel*>::iterator it = _channels.find(channelName);
@@ -393,21 +316,6 @@ Channel* Server::getChannel(const std::string& channelName) {
     }
     return NULL;
 }
-
-/*
-void Server::broadcastToChannel(const std::string& channelName, const std::string& message) {
-    Channel* channel = getChannel(channelName);
-    Logger::info("sending message to all clients in channel");
-    if (channel) {
-        std::vector<Client*> members = channel->getMembers();
-       
-        for (std::vector<Client*>::iterator it = members.begin(); it != members.end(); ++it) {
-             Logger::info("client: "+ (*it)->getNickname());
-                sendToClient((*it)->getFd(), message);
-        }
-    }
-}
-*/
 
 void Server::broadcastToChannel(const std::string& channelName, const std::string& message, Client* excludeClient) {
     Channel* channel = getChannel(channelName);
