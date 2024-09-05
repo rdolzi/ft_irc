@@ -97,32 +97,32 @@ void Channel::inviteClient(Client* client) {
 
 // Update addMember to remove the client from the invited list if they join
 bool Channel::addMember(Client* client, const std::string& key) {
-
     if (isFull()) {
-        Logger::info("FAIL addmember: IS FULL!");
+        Logger::info("FAIL addMember: Channel is full, cannot add " + client->getNickname());
         return false;
     }
 
     if (!checkKey(key)) {
-        Logger::info("FAIL addmember: checkKey!");
+        Logger::info("FAIL addMember: Invalid key provided for channel " + _name + " by " + client->getNickname());
+        Logger::info("Provided key: '" + key + "', Expected key: '" + _key + "'");
         return false;
     }
-    
+
     if (_inviteOnly && !isInvited(client)) {
+        Logger::info("FAIL addMember: Channel is invite-only, client " + client->getNickname() + " is not invited");
         return false;
     }
-    
+
     if (!isMember(client)) {
         _members.push_back(client);
+        Logger::info("SUCCESS addMember: Added client " + client->getNickname() + " to channel " + _name);
         _invitedClients.erase(std::remove(_invitedClients.begin(), _invitedClients.end(), client), _invitedClients.end());
         return true;
     }
-    
+
+    Logger::info("FAIL addMember: Client " + client->getNickname() + " is already a member of the channel " + _name);
     return false;
 }
-
-
-
 
 void Channel::setTopicRestricted(bool restricted) {
     _topicRestricted = restricted;

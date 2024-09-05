@@ -186,18 +186,12 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
         sendReply(clientFd, "461 JOIN :Not enough parameters", true);
-        Logger::debug("Sent [461] 'Not enough parameters' reply");
         return;
     }
 
     std::string channelName = cmd.getParameters()[0];
     std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
     Client* client = _server.getClientByFd(clientFd);
-
-    if(cmd.getParameters().size() > 1){
-    Logger::debug("CHANNEL KEY: " + key);
-    }
-    
 
     if (!client) {
         Logger::error("Client not found for fd: " + to_string(clientFd));
@@ -211,15 +205,15 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
         return;
     }
 
-    // Perform other checks (e.g., invite-only, key, user limit)
+    // Create or get the channel
     Channel* channel = _server.getOrCreateChannel(channelName, clientFd);
     if (!channel) {
         sendReply(clientFd, "403 " + channelName + " :No such channel", true);
         Logger::debug("Sent [403] 'No such channel' reply");
         return;
     }
-    channelName = channel->getName();
-    // Add the client as a member of the channel before broadcasting the join message
+
+    // Add the client as a member of the channel
     if (!channel->addMember(client, key)) {
         Logger::error("Failed to add member to channel after all checks passed");
         return;
@@ -229,11 +223,12 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     std::string joinMessage = ":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n";
     _server.broadcastToChannel(channelName, joinMessage);
 
-    // Send channel topic (numeric 331 or 332)
-    if (channel->getTopic().empty()) {
+    // Send the channel topic after joining
+    std::string topic = channel->getTopic();
+    if (topic.empty()) {
         sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set", true);
     } else {
-        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + channel->getTopic(), true);
+        sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + topic, true);
     }
 
     // Send names list (numeric 353 and 366)
@@ -252,12 +247,22 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     std::string target = cmd.getParameters()[0];
     std::string message = cmd.getParameters()[1];
     Client* sender = _server.getClientByFd(clientFd);
-    
+
     // Check if the sender exists (shouldn't be null)
     if (!sender) {
         Logger::error("Client not found for fd: " + to_string(clientFd));
         return;
     }
+
+    // Check if the message starts with ':'
+    if (message[0] != ':') {
+        sendReply(clientFd, "461 PRIVMSG :Message must start with ':'", true);  // Error code 461: Not enough parameters
+        Logger::debug("PRIVMSG message missing ':'");
+        return;
+    }
+
+    // Remove the leading ':' from the message
+    message = message.substr(1);
 
     // Check if the target is a channel
     if (isChannelSyntaxOk(target)) {
@@ -269,10 +274,10 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
         }
 
         Channel* channel = _server.getChannel(target);
-        
+
         // Check if the channel exists and the sender is a member of the channel
         if (!channel || !channel->isMember(sender)) {
-            sendReply(clientFd, "404 " + target + " ::Cannot send to channel", true);
+            sendReply(clientFd, "404 " + target + " :Cannot send to channel", true);
             Logger::debug("Client is not a member of the channel. Sent [404] ':Cannot send to channel'");
             return;
         }
@@ -286,7 +291,7 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     } else {
         // Handle private messages to a specific user
         Client* recipient = _server.getClientByNickname(target);
-        
+
         // Check if the recipient exists
         if (!recipient) {
             Logger::error("Recipient client not found for nickname: " + target);
@@ -334,7 +339,7 @@ bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && (client->getNickname() != "") && client->isUserSet();
 }
 
-void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool flag) const {
+/*void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool flag) const {
 
     std::string formattedReply;
     if (flag){
@@ -344,7 +349,21 @@ void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool fla
     }
     Logger::debug("Sending reply to client " + to_string(clientFd) + ": " + formattedReply);
     _server.sendToClient(clientFd, formattedReply);
+}*/
+
+void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool includeServerName) const {
+    std::string formattedReply = reply;
+    
+    if (includeServerName) {
+        formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";  // Include server name if needed
+    } else {
+        formattedReply += "\r\n";  // Just append the reply without server name
+    }
+    
+    Logger::debug("Sending reply to client " + to_string(clientFd) + ": " + formattedReply);
+    _server.sendToClient(clientFd, formattedReply);  // Send reply only to the specified client
 }
+
 
 
 void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
@@ -506,59 +525,70 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
 }
 
 
-
-
 void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
     Client* client = _server.getClientByFd(clientFd);
+
     if (cmd.getParameters().empty() || cmd.getParameters().size() > 2) {
+        Logger::debug("Invalid number of parameters for TOPIC command");
         sendReply(clientFd, "461 TOPIC :Not enough parameters", true);
         return;
     }
 
-    // dal index 1
     std::string channelName = cmd.getParameters()[0];
     Channel* channel = _server.getChannel(channelName);
     if (!channel) {
+        Logger::debug("Channel " + channelName + " does not exist");
+        sendReply(clientFd, "403 " + channelName + " :No such channel", true);
         return;
     }
-    channelName = channel->getName();
+
     if (!channel->isMember(client)) {
+        Logger::debug("Client " + client->getNickname() + " is not a member of channel " + channelName);
         sendReply(clientFd, "442 " + channelName + " :You're not on that channel", true);
         return;
     }
 
-
-     if (!channel->isOperator(client)) {
-        sendReply(clientFd, "482 " + channelName + " :You're not channel operator", true);
-        return;
-    }
-    
-    if (channel->isTopicRestricted()) {
-        sendReply(clientFd, " " + channelName + " :topic is restricted (+t)", false);
-        return;
-    }
-
-    // If there's no topic provided, we're querying the current topic
+    // Querying the topic
     if (cmd.getParameters().size() == 1) {
+        Logger::debug("Querying the topic for channel " + channelName);
         std::string currentTopic = channel->getTopic();
         if (currentTopic.empty()) {
-            sendReply(clientFd, "331 " + channelName + " :No topic is set", true);
+            Logger::debug("No topic is set for channel " + channelName);
+            sendReply(clientFd, "331 " + client->getNickname() + " " + channelName + " :No topic is set", true);
         } else {
-            sendReply(clientFd, "332 " + channelName + " :" + currentTopic, true);
+            Logger::debug("Sending topic for channel " + channelName);
+            sendReply(clientFd, "332 " + client->getNickname() + " " + channelName + " :" + currentTopic, false); // No server name
         }
         return;
     }
 
-    
-    // if args == 2, 
+    // Setting the topic
+    if (!channel->isOperator(client)) {
+        Logger::debug("Client " + client->getNickname() + " is not an operator in channel " + channelName);
+        sendReply(clientFd, "482 " + channelName + " :You're not channel operator", true);
+        return;
+    }
+
     std::string newTopic = cmd.getParameters()[1];
+
+    // Check if the new topic starts with a colon (IRC requirement for multi-word topics)
+    if (newTopic.empty() || newTopic[0] != ':') {
+        Logger::debug("Invalid topic format for channel " + channelName);
+        sendReply(clientFd, "461 TOPIC :Topic must start with ':'", true);
+        return;
+    }
+
+    // Remove the leading colon for storage
+    newTopic = newTopic.substr(1);
+
+    Logger::debug("Setting new topic for channel " + channelName + ": " + newTopic);
     channel->setTopic(newTopic);
 
     // Broadcast the new topic to all members of the channel
-    std::string topicMessage = ":" + client->getFullClientIdentifier() + " TOPIC " + channelName + " :" + newTopic;
+    std::string topicMessage = ":" + client->getFullClientIdentifier() + " TOPIC " + channelName + " :" + newTopic + "\r\n";
     _server.broadcastToChannel(channelName, topicMessage);
-
 }
+
 
 void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
     Client* inviter = _server.getClientByFd(clientFd);
