@@ -89,8 +89,8 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     }
 
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "461 PASS :Not enough parameters", true);
-        Logger::debug("Sent [461] 'not enough parameters' reply");
+        sendReply(clientFd, "461 PASS :Wrong number of parameters", true);
+        Logger::debug("Sent [461] 'Wrong number of parameters' reply");
         return;
     }
 
@@ -108,8 +108,16 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
 
 void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
     Client* client = _server.getClientByFd(clientFd);
+
+    // Ensure client is valid
+    if (!client) {
+        Logger::error("Client not found for fd: " + to_string(clientFd));
+        return;
+    }
+
     Logger::debug("Executing NICK command. Current nickname: " + client->getNickname());
 
+    // Check if a nickname was provided
     if (cmd.getParameters().size() != 1) {
         sendReply(clientFd, "431 * :No nickname given", true);
         Logger::debug("Sent [431] 'no nickname given' reply");
@@ -118,15 +126,17 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
 
     std::string newNick = cmd.getParameters()[0];
 
+    // Check if the provided nickname is valid
     if (!isValidNickname(newNick)) {
         sendReply(clientFd, "432 " + newNick + " :Erroneous nickname", true);
         Logger::debug("Sent [432] 'erroneous nickname' reply");
         return;
     }
 
+    // Check if the nickname is already taken
     if (_server.isNicknameTaken(newNick)) {
         sendReply(clientFd, "433 " + newNick + " :Nickname is already in use", true);
-        Logger::debug("Sent 'nickname in use' reply");
+        Logger::debug("Sent [433] 'nickname in use' reply");
         return;
     }
 
@@ -134,15 +144,21 @@ void CommandExecutor::executeNick(int clientFd, const Command& cmd) {
     std::string oldClientIdentifier = client->getFullClientIdentifier();
     client->setNickname(newNick);
 
+    // Handle first-time nickname set (registration complete)
     if (oldNick.empty() && isRegistered(client)) {
         Logger::debug("Nickname set for the first time: " + newNick);
         sendReply(clientFd, "001 " + newNick + " :Welcome to the Internet Relay Network " + client->getFullClientIdentifier(), true);
         Logger::debug("[001] Registration complete, sent welcome message");
-    } else { // TODO: Da verificare se sia da lasciare o togliere
+    } else if (!oldNick.empty()) { 
+        // Broadcast the nickname change to others
+        std::string newClientIdentifier = client->getFullClientIdentifier();
         _server.broadcast(":" + oldClientIdentifier + " NICK " + newNick + "\r\n", clientFd);
-        Logger::debug("Nickname changed from " + oldNick + " to " + newNick);
+        Logger::debug("Nickname changed from " + oldNick + " to " + newNick + ". Broadcasting to other clients.");
+    } else {
+        Logger::debug("Nickname set but client is not yet fully registered: " + newNick);
     }
 }
+
 
 
 void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
@@ -156,15 +172,15 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     }
 
     if (cmd.getParameters().size() < 4) {
-        sendReply(clientFd, "461 USER :Not enough parameters", true);
-        Logger::debug("Sent [461] 'not enough parameters' reply");
+        sendReply(clientFd, "461 USER :Wrong number of parameters", true);
+        Logger::debug("Sent [461] 'Wrong number of parameters' reply");
         return;
     }
 
 
     if (cmd.getParameters().size() > 3  && cmd.getParameters()[3][0] != ':') {
         sendReply(clientFd, "461 USER :Wrong syntax", true);
-        Logger::debug("Sent [461] 'not enough parameters' reply");
+        Logger::debug("Sent [461] 'wrong syntax' reply");
         return;
     }
 
@@ -185,7 +201,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
 
 void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     if (cmd.getParameters().empty()) {
-        sendReply(clientFd, "461 JOIN :Not enough parameters", true);
+        sendReply(clientFd, "461 JOIN :Wrong number of parameters", true);
         return;
     }
 
@@ -339,18 +355,6 @@ bool CommandExecutor::isRegistered(const Client* client) const {
     return client->isPasswordSet() && (client->getNickname() != "") && client->isUserSet();
 }
 
-/*void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool flag) const {
-
-    std::string formattedReply;
-    if (flag){
-        formattedReply = ":" + _server.getServerName() + " " + reply + "\r\n";
-    } else {
-        formattedReply = reply + "\r\n";
-    }
-    Logger::debug("Sending reply to client " + to_string(clientFd) + ": " + formattedReply);
-    _server.sendToClient(clientFd, formattedReply);
-}*/
-
 void CommandExecutor::sendReply(int clientFd, const std::string& reply, bool includeServerName) const {
     std::string formattedReply = reply;
     
@@ -378,7 +382,7 @@ void CommandExecutor::executeMode(int clientFd, const Command& cmd) {
     }
 
     if (cmd.getParameters().size() > 3) {
-        sendReply(clientFd, "461 MODE :Not enough parameters", true);
+        sendReply(clientFd, "461 MODE :Wrong number of parameters", true);
         return;
     }
     std::string channel = cmd.getParameters()[0];
@@ -530,7 +534,7 @@ void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
 
     if (cmd.getParameters().empty() || cmd.getParameters().size() > 2) {
         Logger::debug("Invalid number of parameters for TOPIC command");
-        sendReply(clientFd, "461 TOPIC :Not enough parameters", true);
+        sendReply(clientFd, "461 TOPIC :Wrong number of parameters", true);
         return;
     }
 
@@ -596,7 +600,7 @@ void CommandExecutor::executeInvite(int clientFd, const Command& cmd) {
 
     // Check for correct number of parameters
     if (cmd.getParameters().size() != 2) {
-        sendReply(clientFd, "461 INVITE :Not enough parameters", true);
+        sendReply(clientFd, "461 INVITE :Wrong number of parameters", true);
         return;
     }
 
@@ -658,7 +662,7 @@ void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
 
     // Check for correct number of parameters
     if (cmd.getParameters().size() < 2 || cmd.getParameters().size() > 3) {
-        sendReply(clientFd, "461 KICK :Not enough parameters", true);
+        sendReply(clientFd, "461 KICK :Wrong number of parameters", true);
         return;
     }
 
@@ -746,7 +750,7 @@ bool CommandExecutor::isChannelSyntaxOk(const std::string& channelName){
 void CommandExecutor::executePing(int clientFd, const Command& cmd){
 
     if (cmd.getParameters().size() < 1) {
-        sendReply(clientFd, "461 PING :Not enough parameters", true);
+        sendReply(clientFd, "461 PING :Wrong number of parameters", true);
         return;
     }
     if (cmd.getParameters().size() == 1 && (cmd.getParameters()[0] != _server.getServerName())){
@@ -768,7 +772,7 @@ void CommandExecutor::executeCap(int clientFd){
 
 void CommandExecutor::executeWho(int clientFd, const Command& cmd) {
     if (cmd.getParameters().size() < 1) {
-        sendReply(clientFd, "461 WHO :Not enough parameters", true);
+        sendReply(clientFd, "461 WHO :Wrong number of parameters", true);
         return;
     }
 
