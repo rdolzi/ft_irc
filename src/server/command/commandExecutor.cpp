@@ -95,6 +95,8 @@ void CommandExecutor::executePass(int clientFd, const Command& cmd) {
     }
 
     std::string password = cmd.getParameters()[0];
+    if (password[0] == ':')
+        password = password.substr(1);
     if (password == _server.getPassword()) {
         client->setPassword(true);
         //sendReply(clientFd, ":Password accepted");
@@ -408,15 +410,11 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         sendReply(clientFd, "403 " + channelName + " :No such channel", true);
         return;
     }
-
+    // 2. Initialize variables for processing modes
     Client* client = _server.getClientByFd(clientFd);
+
     if (!client) {
         Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
-        return;
-    }
-
-    if (!channel->isOperator(client)) {
-        sendReply(clientFd, "481 " + client->getFullClientIdentifier() + " :Permission Denied - You do not have the required privileges", true);
         return;
     }
 
@@ -426,19 +424,21 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
     std::string modeArgs;
     int paramModeCount = 0;
 
-    // 2. Process each character in the modestring
+    if (!channel->isOperator(client)){
+        sendReply(clientFd, "481 "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges", true);
+        return;
+    }
+    // 3. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
         char mode = modestring[i];
         if (mode == '+') {
             adding = true;
-            if (modeChanges.empty() || modeChanges[modeChanges.length() - 1] != '+') {  // Fix here
-                modeChanges += "+";
-            }
+            modeChanges += "+";
+            argIndex++;
         } else if (mode == '-') {
             adding = false;
-            if (modeChanges.empty() || modeChanges[modeChanges.length() - 1] != '-') {  // Fix here
-                modeChanges += "-";
-            }
+            modeChanges += "-";
+            argIndex++;
         } else {
             bool requiresParam = (mode == 'k' || mode == 'o' || mode == 'l');
             if (requiresParam && paramModeCount >= 3) {
@@ -449,14 +449,16 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                 case 'i':
                     channel->setInviteOnly(adding);
                     modeChanges += mode;
+                    argIndex++;
                     break;
                 case 't':
                     channel->setTopicRestricted(adding);
                     modeChanges += mode;
+                    argIndex++;
                     break;
-                case 'k':  // Channel key (password)
+                case 'k': // Channel key (password)
                     if (adding && argIndex < args.size()) {
-                        channel->setKey(args[argIndex]);
+                        channel->setKey(args[argIndex + 1]);
                         modeChanges += mode;
                         modeArgs += " " + args[argIndex];
                         argIndex++;
@@ -465,53 +467,63 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                         channel->removeKey();
                         modeChanges += mode;
                         paramModeCount++;
+                        argIndex++;
                     }
                     break;
-                case 'o':  // Operator
-                    if (argIndex < args.size()) {
-                        Client* targetClient = _server.getClientByNickname(args[argIndex]);
+                case 'o':
+                    if (args.size() == 3) {
+                        Client* targetClient = _server.getClientByNickname(args[2]);
                         if (!targetClient) {
-                            sendReply(clientFd, "401 " + args[argIndex] + " :No such nick/channel", true);
+                            Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
                             return;
                         }
-                        if (adding) {
-                            channel->addOperator(targetClient);
-                        } else {
-                            channel->removeOperator(targetClient);
+                        Logger::info("targetClient: "+ targetClient->getNickname());
+                        if (targetClient) {
+                            if (adding) {
+                                channel->addOperator(targetClient);
+                            } else {
+                                channel->removeOperator(targetClient);
+                            }
+                            modeChanges += mode;
+                           // modeArgs += " " + args[argIndex];
+                            paramModeCount++;
                         }
-                        modeChanges += mode;
-                        modeArgs += " " + args[argIndex];
-                        paramModeCount++;
                         argIndex++;
                     }
                     break;
-                case 'l':  // User limit
+                case 'l': // User limit
+                Logger::info("In mode (l)");
                     if (adding && argIndex < args.size()) {
+                        Logger::info("Inside if mode (l)");
                         int userLimit;
-                        std::stringstream ss(args[argIndex]);
+                        std::stringstream ss(args[argIndex + 1]);
                         ss >> userLimit;
+
                         if (ss.fail() || !ss.eof()) {
-                            sendReply(clientFd, "501 l :Invalid user limit", true);
-                            return;
+                            Logger::error("Error while executing MODE (l)");
+                        } else {
+                            Logger::info("In mode (l)");
+                            channel->setUserLimit(userLimit);
+                            modeChanges += mode;
+                            modeArgs += " " + args[argIndex];
+                            paramModeCount++;
                         }
-                        channel->setUserLimit(userLimit);
-                        modeChanges += mode;
-                        modeArgs += " " + args[argIndex];
-                        paramModeCount++;
-                        argIndex++;
-                    } else if (!adding) {
+                    }
+                    else if (!adding) {
                         channel->removeUserLimit();
                         modeChanges += mode;
                     }
+                    argIndex++;
                     break;
                 default:
                     sendReply(clientFd, "501 " + std::string(1, mode) + " :is unknown mode char to me", true);
+                    argIndex++;
                     break;
             }
         }
     }
 
-    // 3. Build and broadcast the mode change string
+    // 4. Build the mode change string && broadcast
     if (!modeChanges.empty()) {
         std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + modeChanges + modeArgs + "\r\n";
         _server.broadcastToChannel(channelName, modeMessage);
@@ -754,12 +766,15 @@ void CommandExecutor::executePing(int clientFd, const Command& cmd){
         sendReply(clientFd, "461 PING :Wrong number of parameters", true);
         return;
     }
-    if (cmd.getParameters().size() == 1 && (cmd.getParameters()[0] != _server.getServerName())){
-        sendReply(clientFd, "402 PING "+ cmd.getParameters()[0] +" :No such server", true);
+     std::string server = cmd.getParameters()[0];
+    if (server[0] == ':')
+        server = server.substr(1);
+    if (cmd.getParameters().size() == 1 && (server != _server.getServerName())){
+        sendReply(clientFd, "402 PING "+ server +" :No such server", true);
         return;
     }
         if (cmd.getParameters().size() == 2 && (cmd.getParameters()[1] != _server.getServerName())){
-        sendReply(clientFd, "402 PING "+ cmd.getParameters()[0] +" :No such server", true);
+        sendReply(clientFd, "402 PING "+ server +" :No such server", true);
         return;
     }
      sendReply(clientFd, "PONG "+ _server.getServerName(), true);

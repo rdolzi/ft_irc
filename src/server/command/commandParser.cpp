@@ -86,11 +86,9 @@ std::vector<std::string> CommandParser::extractParameters(std::string& message) 
             std::string trailing;
             std::getline(iss, trailing);
             Logger::debug("BEFORE>> Extracted trailing parameter: '" + param + "'");
-            if (flag > 1){
+
               param = param + trailing;
-            } else {
-               param = param.substr(1) + trailing;
-            }
+
             parameters.push_back(param);
             Logger::debug("Extracted trailing parameter: '" + param + "'");
             break;
