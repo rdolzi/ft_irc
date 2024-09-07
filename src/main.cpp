@@ -10,7 +10,6 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     Logger::setLogLevel(Logger::DEBUG); 
-    // Logger::setLogFile("ircserver.log");
     int port;
     try {
         port = std::atoi(argv[1]);

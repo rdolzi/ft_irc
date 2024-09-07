@@ -41,7 +41,7 @@ public:
     void setUserLimit(int limit);
 
     // Member functions
-    bool addMember(Client* client, const std::string& key);
+    int addMember(Client* client, const std::string& key);
     void removeMember(Client* client);
     void addOperator(Client* client);
     void removeOperator(Client* client);

@@ -208,7 +208,22 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
     }
 
     std::string channelName = cmd.getParameters()[0];
-    std::string key = (cmd.getParameters().size() > 1) ? cmd.getParameters()[1] : "";
+    std::string key;
+    if (cmd.getParameters().size() > 1) {
+    // Start concatenating the parameters from the second one
+        for (size_t i = 1; i < cmd.getParameters().size(); ++i) {
+            if (i > 1) {
+                key += " "; // Add a space between parts if there are multiple
+            }
+            key += cmd.getParameters()[i];
+    }
+
+    // Check if the key starts with a colon and remove it
+    if (!key.empty() && key[0] == ':') {
+        key = key.substr(1);
+    }
+}
+
     Client* client = _server.getClientByFd(clientFd);
 
     if (!client) {
@@ -231,11 +246,30 @@ void CommandExecutor::executeJoin(int clientFd, const Command& cmd) {
         return;
     }
 
+    if (channel->getMembers().empty()) {
+        channel->addOperator(client);
+        Logger::info("Client " + client->getNickname() + " is now the channel operator for " + channelName);
+    }
+
+    int res = channel->addMember(client, key);
     // Add the client as a member of the channel
-    if (!channel->addMember(client, key)) {
+    if (res == 1) {
+        sendReply(client->getFd(), " :Can't join, channel is full", true);
         Logger::error("Failed to add member to channel after all checks passed");
         return;
-    }
+    } else if (res == 2) {
+        sendReply(client->getFd(), " :Can't join, wrong channel key", true);
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
+    } if (res == 3 ) {
+        sendReply(clientFd, channelName + " :Can't join channel, channel is invite only", true);
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
+    } if (res == 4 ) {
+        sendReply(clientFd, channelName + " :Can't join channel", true);
+        Logger::error("Failed to add member to channel after all checks passed");
+        return;
+    } 
 
     // Broadcast the join message to all members of the channel
     std::string joinMessage = ":" + client->getFullClientIdentifier() + " JOIN :" + channelName + "\r\n";
@@ -286,7 +320,7 @@ void CommandExecutor::executePrivmsg(int clientFd, const Command& cmd) {
     if (isChannelSyntaxOk(target)) {
         // Validate the channel name
         if (!isValidChannelName(target)) {
-            sendReply(clientFd, "403 " + target + " :No such channel", true);
+            sendReply(clientFd, "403 :No such channel", true);
             Logger::debug("Sent [403] 'No such channel' reply");
             return;
         }
@@ -681,7 +715,7 @@ void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
 
     std::string channelName = cmd.getParameters()[0];
     std::string kickedNick = cmd.getParameters()[1];
-    std::string reason = (cmd.getParameters().size() > 2) ? cmd.getParameters()[2] : "No reason given";
+    std::string reason = (cmd.getParameters().size() > 2) ? cmd.getParameters()[2] : " :No reason given";
 
     // Check if the channel exists
     Channel* channel = _server.getChannel(channelName);
@@ -720,7 +754,7 @@ void CommandExecutor::executeKick(int clientFd, const Command& cmd) {
     channel->removeMember(kicked);
 
     // Construct the kick message
-    std::string kickMsg = ":" + kicker->getFullClientIdentifier() + " KICK " + channelName + " " + kickedNick + " :" + reason + "\r\n";
+    std::string kickMsg = ":" + kicker->getFullClientIdentifier() + " KICK " + channelName + " " + kickedNick + reason + "\r\n";
 
     // Send the kick message to all members of the channel, including the kicked user
     _server.broadcastToChannel(channelName, kickMsg);
