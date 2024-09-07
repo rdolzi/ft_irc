@@ -178,7 +178,7 @@ void CommandExecutor::executeUser(int clientFd, const Command& cmd) {
     }
 
 
-    if (cmd.getParameters().size() > 3  && cmd.getParameters()[3][0] != ':') {
+    if (cmd.getParameters().size() > 4 || cmd.getParameters()[3][0] != ':') {
         sendReply(clientFd, "461 USER :Wrong syntax", true);
         Logger::debug("Sent [461] 'wrong syntax' reply");
         return;
@@ -408,11 +408,15 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
         sendReply(clientFd, "403 " + channelName + " :No such channel", true);
         return;
     }
-    // 2. Initialize variables for processing modes
-    Client* client = _server.getClientByFd(clientFd);
 
+    Client* client = _server.getClientByFd(clientFd);
     if (!client) {
         Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
+        return;
+    }
+
+    if (!channel->isOperator(client)) {
+        sendReply(clientFd, "481 " + client->getFullClientIdentifier() + " :Permission Denied - You do not have the required privileges", true);
         return;
     }
 
@@ -422,21 +426,19 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
     std::string modeArgs;
     int paramModeCount = 0;
 
-    if (!channel->isOperator(client)){
-        sendReply(clientFd, "481 "+client->getFullClientIdentifier()+" :Permission Denied - You do not have the required privileges", true);
-        return;
-    }
-    // 3. Process each character in the modestring
+    // 2. Process each character in the modestring
     for (size_t i = 0; i < modestring.length(); ++i) {
         char mode = modestring[i];
         if (mode == '+') {
             adding = true;
-            modeChanges += "+";
-            argIndex++;
+            if (modeChanges.empty() || modeChanges[modeChanges.length() - 1] != '+') {  // Fix here
+                modeChanges += "+";
+            }
         } else if (mode == '-') {
             adding = false;
-            modeChanges += "-";
-            argIndex++;
+            if (modeChanges.empty() || modeChanges[modeChanges.length() - 1] != '-') {  // Fix here
+                modeChanges += "-";
+            }
         } else {
             bool requiresParam = (mode == 'k' || mode == 'o' || mode == 'l');
             if (requiresParam && paramModeCount >= 3) {
@@ -447,16 +449,14 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                 case 'i':
                     channel->setInviteOnly(adding);
                     modeChanges += mode;
-                    argIndex++;
                     break;
                 case 't':
                     channel->setTopicRestricted(adding);
                     modeChanges += mode;
-                    argIndex++;
                     break;
-                case 'k': // Channel key (password)
+                case 'k':  // Channel key (password)
                     if (adding && argIndex < args.size()) {
-                        channel->setKey(args[argIndex + 1]);
+                        channel->setKey(args[argIndex]);
                         modeChanges += mode;
                         modeArgs += " " + args[argIndex];
                         argIndex++;
@@ -465,65 +465,55 @@ void CommandExecutor::handleChannelMode(int clientFd, const std::string& channel
                         channel->removeKey();
                         modeChanges += mode;
                         paramModeCount++;
-                        argIndex++;
                     }
                     break;
-                case 'o':
-                    if (args.size() == 3) {
-                        Client* targetClient = _server.getClientByNickname(args[2]);
+                case 'o':  // Operator
+                    if (argIndex < args.size()) {
+                        Client* targetClient = _server.getClientByNickname(args[argIndex]);
                         if (!targetClient) {
-                            Logger::error("Client not found in handleChannelMode for fd: " + to_string(clientFd));
+                            sendReply(clientFd, "401 " + args[argIndex] + " :No such nick/channel", true);
                             return;
                         }
-                        Logger::info("targetClient: "+ targetClient->getNickname());
-                        if (targetClient) {
-                            if (adding) {
-                                channel->addOperator(targetClient);
-                            } else {
-                                channel->removeOperator(targetClient);
-                            }
-                            modeChanges += mode;
-                            modeArgs += " " + args[argIndex];
-                            paramModeCount++;
+                        if (adding) {
+                            channel->addOperator(targetClient);
+                        } else {
+                            channel->removeOperator(targetClient);
                         }
+                        modeChanges += mode;
+                        modeArgs += " " + args[argIndex];
+                        paramModeCount++;
                         argIndex++;
                     }
                     break;
-                case 'l': // User limit
-                Logger::info("In mode (l)");
+                case 'l':  // User limit
                     if (adding && argIndex < args.size()) {
-                        Logger::info("Inside if mode (l)");
                         int userLimit;
-                        std::stringstream ss(args[argIndex + 1]);
+                        std::stringstream ss(args[argIndex]);
                         ss >> userLimit;
-
                         if (ss.fail() || !ss.eof()) {
-                            Logger::error("Error while executing MODE (l)");
-                        } else {
-                            Logger::info("In mode (l)");
-                            channel->setUserLimit(userLimit);
-                            modeChanges += mode;
-                            modeArgs += " " + args[argIndex];
-                            paramModeCount++;
+                            sendReply(clientFd, "501 l :Invalid user limit", true);
+                            return;
                         }
-                    }
-                    else if (!adding) {
+                        channel->setUserLimit(userLimit);
+                        modeChanges += mode;
+                        modeArgs += " " + args[argIndex];
+                        paramModeCount++;
+                        argIndex++;
+                    } else if (!adding) {
                         channel->removeUserLimit();
                         modeChanges += mode;
                     }
-                    argIndex++;
                     break;
                 default:
                     sendReply(clientFd, "501 " + std::string(1, mode) + " :is unknown mode char to me", true);
-                    argIndex++;
                     break;
             }
         }
     }
 
-    // 4. Build the mode change string && broadcast
+    // 3. Build and broadcast the mode change string
     if (!modeChanges.empty()) {
-        std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + modeChanges + modeArgs;
+        std::string modeMessage = ":" + client->getNickname() + " MODE " + channelName + " " + modeChanges + modeArgs + "\r\n";
         _server.broadcastToChannel(channelName, modeMessage);
     }
 }
@@ -549,6 +539,17 @@ void CommandExecutor::executeTopic(int clientFd, const Command& cmd) {
     if (!channel->isMember(client)) {
         Logger::debug("Client " + client->getNickname() + " is not a member of channel " + channelName);
         sendReply(clientFd, "442 " + channelName + " :You're not on that channel", true);
+        return;
+    }
+
+
+    if (!channel->isOperator(client)) {
+        sendReply(clientFd, "482 " + channelName + " :You're not channel operator", true);
+        return;
+    }
+    
+    if (channel->isTopicRestricted()) {
+        sendReply(clientFd, " " + channelName + " :topic is restricted (+t)", false);
         return;
     }
 
