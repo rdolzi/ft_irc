@@ -6,7 +6,6 @@
 - [Installation](#installation)
 - [Usage](#usage)
 - [Project Structure](#project-structure)
-- [Architecture](#architecture)
 - [Authors](#authors)
 - [References](#references)
 
